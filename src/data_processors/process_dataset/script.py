@@ -32,21 +32,27 @@ print("input:", adata, flush=True)
 dataset_id = adata.uns.get("dataset_id", "unknown")
 normalization_id = adata.uns.get("normalization_id", "log1p_cp10k")
 
-if "counts" in adata.layers and normalization_id == "counts":
-    print(">> Normalize counts", flush=True)
-    adata = adata.copy()
+# Ensure a raw-counts layer exists: count-based methods (scVI family) read it,
+# and seurat_v3 HVG selection must run on raw counts, not log-normalized data.
+if "counts" not in adata.layers and normalization_id == "counts":
+    adata.layers["counts"] = adata.X.copy()
+
+n_top = min(int(par["n_hvg"]), adata.n_vars - 1)
+print(f">> Select top {n_top} HVGs", flush=True)
+if "counts" in adata.layers:
+    # seurat_v3 expects raw counts -> select on the counts layer
+    sc.pp.highly_variable_genes(
+        adata, n_top_genes=n_top, flavor="seurat_v3", layer="counts", subset=True
+    )
+else:
+    sc.pp.highly_variable_genes(adata, n_top_genes=n_top, flavor="seurat", subset=True)
+
+if normalization_id == "counts":
+    print(">> Normalize counts -> log1p_cp10k", flush=True)
     adata.X = adata.layers["counts"].copy()
     sc.pp.normalize_total(adata, target_sum=1e4)
     sc.pp.log1p(adata)
     normalization_id = "log1p_cp10k"
-
-print(f">> Select top {par['n_hvg']} HVGs", flush=True)
-sc.pp.highly_variable_genes(
-    adata,
-    n_top_genes=min(int(par["n_hvg"]), adata.n_vars - 1),
-    flavor="seurat_v3" if _as_dense(adata.X).min() >= 0 else "seurat",
-    subset=True,
-)
 
 print(f">> Split using method={par['method']}", flush=True)
 rng = np.random.default_rng(int(par["seed"]))

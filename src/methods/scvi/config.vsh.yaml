@@ -1,7 +1,10 @@
 __merge__: ../../api/comp_method.yaml
 name: scvi
 info:
-  preferred_normalization: counts
+  # The benchmark ships a single log1p_cp10k-normalized dataset that RETAINS a
+  # raw-counts layer; scVI reads that counts layer (see script) but must declare
+  # the dataset's normalization to pass run_benchmark's normalization filter.
+  preferred_normalization: log1p_cp10k
   label: scVI
   summary: scvi-tools SCVI reconstruction (scVI / mlscVI / nlscVI).
   description: |

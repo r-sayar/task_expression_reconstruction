@@ -72,7 +72,11 @@ def main() -> None:
         f"{train_adata.shape}, seed={seed}",
         flush=True,
     )
-    scvi.model.SCVI.setup_anndata(train_adata)
+    # The dataset is log1p_cp10k in .X but retains raw counts in the "counts"
+    # layer; scVI must train on counts. Fall back to .X only if no counts layer.
+    counts_layer = "counts" if "counts" in train_adata.layers else None
+    print(f">> scVI reads counts from layer={counts_layer!r}", flush=True)
+    scvi.model.SCVI.setup_anndata(train_adata, layer=counts_layer)
     model = scvi.model.SCVI(
         train_adata,
         n_latent=int(par["n_latent"]),
@@ -89,7 +93,7 @@ def main() -> None:
     model.train(max_epochs=int(par["max_epochs"]), plan_kwargs=plan_kwargs or None)
 
     print(">> Predict normalized expression on test", flush=True)
-    scvi.model.SCVI.setup_anndata(test_adata)
+    scvi.model.SCVI.setup_anndata(test_adata, layer=counts_layer)
     X_pred = model.get_normalized_expression(
         adata=test_adata,
         return_numpy=True,
