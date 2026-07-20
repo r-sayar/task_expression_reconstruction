@@ -51,10 +51,13 @@ model_variants = [
   [model_id: "nlscvi", component: "scvi",        settings_key: "nlscVI", args: [variant: "nlscvi"]],
 ]
 
-// Reduced scope (best latent + best split, 3 seeds): only latent 2048, and
-// the split is fixed to split02 via the dataset's uns. 6 models x 3 seeds = 18.
-latent_sizes = [2048]
-seeds        = [42, 43, 44]
+// Grid axes are params-overridable so a smoke test (latent 10, 1 seed, capped
+// epochs) and the real run (latent 2048, seeds 42-44) share one main.nf.
+// The split is fixed to split02 via the dataset's uns.
+latent_sizes = params.latents ?: [2048]
+seeds        = params.seeds   ?: [42, 43, 44]
+// epoch_cap > 0 caps every model's training epochs (smoke-test mechanics check).
+epoch_cap    = (params.epoch_cap ?: 0) as Integer
 
 // Derive the split id (split01/02/03) for a dataset from its uns.
 def resolveSplit(dataset_uns) {
@@ -117,10 +120,10 @@ workflow run_wf {
             method_args.seed = seed
             if (mv.component == "autoencoder") {
               // autoencoder component exposes --epochs (not --max_epochs)
-              method_args.epochs = arch.max_epochs
+              method_args.epochs = epoch_cap > 0 ? Math.min(arch.max_epochs as Integer, epoch_cap) : arch.max_epochs
               method_args.hidden_widths = arch.hidden_widths
             } else {
-              method_args.max_epochs = arch.max_epochs
+              method_args.max_epochs = epoch_cap > 0 ? Math.min(arch.max_epochs as Integer, epoch_cap) : arch.max_epochs
               method_args.n_hidden = arch.n_hidden
               method_args.n_layers = arch.n_layers
               method_args.max_kl_weight = arch.max_kl_weight
