@@ -51,8 +51,10 @@ model_variants = [
   [model_id: "nlscvi", component: "scvi",        settings_key: "nlscVI", args: [variant: "nlscvi"]],
 ]
 
-latent_sizes = [10, 32, 128, 512, 2048]
-seeds        = [0, 1, 2, 3, 4]
+// Reduced scope (best latent + best split, 3 seeds): only latent 2048, and
+// the split is fixed to split02 via the dataset's uns. 6 models x 3 seeds = 18.
+latent_sizes = [2048]
+seeds        = [42, 43, 44]
 
 // Derive the split id (split01/02/03) for a dataset from its uns.
 def resolveSplit(dataset_uns) {
