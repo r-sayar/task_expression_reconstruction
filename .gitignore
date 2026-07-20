@@ -10,3 +10,6 @@ trace-*
 .ipynb_checkpoints
 /temp
 /.vscode
+
+__pycache__/
+*.pyc
