@@ -3,9 +3,10 @@ info:
   type: data_processor
   type_info:
     label: Data processor
-    summary: A data processor.
+    summary: Process a common dataset into train/test/solution splits.
     description: |
-      A component for processing a Common Dataset into a task-specific dataset.
+      Normalizes expression, selects highly variable genes, and splits cells
+      into train and held-out test sets for gene-expression reconstruction.
 arguments:
   - name: "--input"
     __merge__: file_common_dataset.yaml
@@ -24,8 +25,7 @@ arguments:
     direction: output
     required: true
 test_resources:
-  - path: /resources_test/common/cxg_mouse_pancreas_atlas
-    dest: resources_test/common/cxg_mouse_pancreas_atlas
+  - path: /resources_test/common/luca
+    dest: resources_test/common/luca
   - type: python_script
     path: /common/component_tests/run_and_check_output.py
-      

@@ -3,9 +3,10 @@ info:
   type: method
   type_info:
     label: Method
-    summary: A method.
+    summary: A gene-expression reconstruction method.
     description: |
-      A method to predict the task effects.
+      A method that learns from training cells and reconstructs expression
+      for held-out test cells.
 arguments:
   - name: --input_train
     __merge__: file_train.yaml
@@ -24,5 +25,5 @@ test_resources:
     path: /common/component_tests/run_and_check_output.py
   - type: python_script
     path: /common/component_tests/check_config.py
-  - path: /resources_test/task_template/cxg_mouse_pancreas_atlas
-    dest: resources_test/task_template/cxg_mouse_pancreas_atlas
+  - path: /resources_test/reconeval/luca
+    dest: resources_test/reconeval/luca

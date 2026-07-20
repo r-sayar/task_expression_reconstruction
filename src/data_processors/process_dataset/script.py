@@ -1,86 +1,79 @@
-import sys
-import random
 import numpy as np
+import scanpy as sc
 import anndata as ad
-import openproblems as op
 
 ## VIASH START
 par = {
-    'input': 'resources_test/common/cxg_mouse_pancreas_atlas/dataset.h5ad',
-    'method': 'batch',
-    'seed': None,
-    'obs_batch': 'batch',
-    'obs_label': 'cell_type',
-    'output_train': 'train.h5ad',
-    'output_test': 'test.h5ad',
-    'output_solution': 'solution.h5ad'
+    "input": "resources_test/common/luca/dataset.h5ad",
+    "method": "random",
+    "n_hvg": 2000,
+    "test_fraction": 0.2,
+    "obs_origin": "origin",
+    "test_origin": "tumor_primary",
+    "seed": 0,
+    "output_train": "train.h5ad",
+    "output_test": "test.h5ad",
+    "output_solution": "solution.h5ad",
 }
-meta = {
-    'resources_dir': 'target/executable/data_processors/process_dataset',
-    'config': 'target/executable/data_processors/process_dataset/.config.vsh.yaml'
-}
+meta = {"name": "process_dataset"}
 ## VIASH END
 
-# import helper functions
-sys.path.append(meta['resources_dir'])
-from subset_h5ad_by_format import subset_h5ad_by_format
 
-config = op.project.read_viash_config(meta["config"])
+def _as_dense(x):
+    if hasattr(x, "toarray"):
+        return np.asarray(x.toarray())
+    return np.asarray(x)
 
-# set seed if need be
-if par["seed"]:
-    print(f">> Setting seed to {par['seed']}")
-    random.seed(par["seed"])
 
 print(">> Load data", flush=True)
 adata = ad.read_h5ad(par["input"])
-print("input:", adata)
+print("input:", adata, flush=True)
 
-print(f">> Process data using {par['method']} method")
-if par["method"] == "batch":
-    batch_info = adata.obs[par["obs_batch"]]
-    batch_categories = batch_info.dtype.categories
-    test_batches = random.sample(list(batch_categories), 1)
-    is_test = [ x in test_batches for x in batch_info ]
-elif par["method"] == "random":
-    train_ix = np.random.choice(adata.n_obs, round(adata.n_obs * 0.8), replace=False)
-    is_test = [ not x in train_ix for x in range(0, adata.n_obs) ]
+dataset_id = adata.uns.get("dataset_id", "unknown")
+normalization_id = adata.uns.get("normalization_id", "log1p_cp10k")
 
-# subset the different adatas
-print(">> Figuring which data needs to be copied to which output file", flush=True)
-# use par arguments to look for label and batch value in different slots
-slot_mapping = {
-    "obs": {
-        "label": par["obs_label"],
-        "batch": par["obs_batch"],
-    }
-}
+if "counts" in adata.layers and normalization_id == "counts":
+    print(">> Normalize counts", flush=True)
+    adata = adata.copy()
+    adata.X = adata.layers["counts"].copy()
+    sc.pp.normalize_total(adata, target_sum=1e4)
+    sc.pp.log1p(adata)
+    normalization_id = "log1p_cp10k"
 
-print(">> Creating train data", flush=True)
-output_train = subset_h5ad_by_format(
-    adata[[not x for x in is_test]],
-    config,
-    "output_train",
-    slot_mapping
+print(f">> Select top {par['n_hvg']} HVGs", flush=True)
+sc.pp.highly_variable_genes(
+    adata,
+    n_top_genes=min(int(par["n_hvg"]), adata.n_vars - 1),
+    flavor="seurat_v3" if _as_dense(adata.X).min() >= 0 else "seurat",
+    subset=True,
 )
 
-print(">> Creating test data", flush=True)
-output_test = subset_h5ad_by_format(
-    adata[is_test],
-    config,
-    "output_test",
-    slot_mapping
-)
+print(f">> Split using method={par['method']}", flush=True)
+rng = np.random.default_rng(int(par["seed"]))
+if par["method"] == "random":
+    n_test = max(1, int(round(adata.n_obs * float(par["test_fraction"]))))
+    test_ix = rng.choice(adata.n_obs, size=n_test, replace=False)
+    is_test = np.zeros(adata.n_obs, dtype=bool)
+    is_test[test_ix] = True
+elif par["method"] == "origin":
+    if par["obs_origin"] not in adata.obs.columns:
+        raise KeyError(f"{par['obs_origin']!r} not in adata.obs")
+    is_test = adata.obs[par["obs_origin"]].astype(str) == par["test_origin"]
+    if is_test.sum() == 0:
+        raise ValueError(f"No cells with origin={par['test_origin']!r}")
+else:
+    raise ValueError(f"Unknown split method: {par['method']!r}")
 
-print(">> Creating solution data", flush=True)
-output_solution = subset_h5ad_by_format(
-    adata[is_test],
-    config,
-    "output_solution",
-    slot_mapping
-)
+train = adata[~is_test].copy()
+test = adata[is_test].copy()
+solution = test.copy()
 
-print(">> Writing data", flush=True)
-output_train.write_h5ad(par["output_train"])
-output_test.write_h5ad(par["output_test"])
-output_solution.write_h5ad(par["output_solution"])
+for obj in (train, test, solution):
+    obj.uns["dataset_id"] = dataset_id
+    obj.uns["normalization_id"] = normalization_id
+
+print(">> Write outputs", flush=True)
+print(f"   train: {train.shape}, test: {test.shape}", flush=True)
+train.write_h5ad(par["output_train"], compression="gzip")
+test.write_h5ad(par["output_test"], compression="gzip")
+solution.write_h5ad(par["output_solution"], compression="gzip")

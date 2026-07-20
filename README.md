@@ -1,37 +1,51 @@
-# Task Template
+# Gene expression reconstruction
 
-This repo is a template to create a new task for the OpenProblems v2. This repo contains several example files and components that can be used when updated with the task info.
+Benchmark metrics and methods for reconstructing gene expression from
+single-cell latent representations.
 
-> [!WARNING] 
-> This README will be overwritten when performing the `create_task_readme` script.
+> [!WARNING]
+> This README will be overwritten when running the `create_task_readme` script
+> (`scripts/create_readme.sh`), which regenerates it from `src/api`.
 
-## Create a repository from this template
+## Overview
 
-> [!IMPORTANT] 
-> Before creating a new repository, make sure you are part of the OpenProblems task team. This will be done when you create an issue for the task and you get the go ahead to create the task.
-> For more information on how to create a new task, check out the [Create a new task](https://openproblems.bio/documentation/create_task/) documentation.
+This OpenProblems v2 task evaluates how well methods reconstruct gene
+expression from single-cell data. It ports the ReconEval benchmark
+(`theislab/ReconEval`) into the OpenProblems task template.
 
-The instructions below will guide you through creating a new repository from this template ([creating-a-repository-from-a-template](https://docs.github.com/en/repositories/creating-and-managing-repositories/creating-a-repository-from-a-template#creating-a-repository-from-a-template)).
+Components:
 
+* **Data processor** (`src/data_processors/process_dataset`) — normalize LuCA
+  (Human Lung Cancer Cell Atlas) data, select HVGs, split train/test/solution.
+* **Methods** (`src/methods`) — `pca_reconstruction`, `autoencoder`
+  (AE/olAE/mlAE via `library_size_mode`) and `scvi` (scVI/mlscVI/nlscVI via
+  likelihood/library options).
+* **Control methods** (`src/control_methods`) — `ground_truth`,
+  `negative_control`.
+* **Metrics** (`src/metrics`) — `statistical`, `biological`, `knn_purity`.
+* **Workflows** (`src/workflows`) — `process_datasets`, `run_benchmark`.
 
-* Click the "Use this template" button on the top right of the repository.
-* Use the Owner dropdown menu to select the `openproblems-bio` account.
-* Type a name for your repository (task_...), and a description.
-* Set the repository visibility to public.
-* Click "Create repository from template".
+Dataset scope: **LuCA only** for now.
 
 ## Clone the repository
 
-To clone the repository with the submodule files, you can use the following command:
+```bash
+git clone --recursive git@github.com:openproblems-bio/task_expression_reconstruction.git
+```
+
+> [!NOTE]
+> If no files are visible in the `common/` submodule after cloning, see
+> [`common/README.md`](common/README.md).
+
+## Build and run
 
 ```bash
-git clone --recursive git@github.com:openproblems-bio/<repo_name>.git
+# build all components
+viash ns build --parallel --setup cachedbuild
+
+# small test run on LuCA test resources
+bash scripts/run_benchmark/run_test_local.sh
 ```
->[!NOTE]
-> If somehow there are no files visible in the submodule after cloning using the above command. Check the instructions [here](common/README.md).
 
-## What to do next
-
-Check out the [instructions](https://github.com/openproblems-bio/common_resources/blob/main/INSTRUCTIONS.md) for more information on how to update the example files and components. These instructions also contain information on how to build out the task and basic commands.
-
-For more information on the OpenProblems v2, check out the [documentation](https://openproblems.bio/documentation/).
+For more information on OpenProblems v2, see the
+[documentation](https://openproblems.bio/documentation/).

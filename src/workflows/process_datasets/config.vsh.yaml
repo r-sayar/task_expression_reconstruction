@@ -6,32 +6,35 @@ argument_groups:
     arguments:
       - name: "--input"
         __merge__: /src/api/file_common_dataset.yaml
-        required: true
+        type: file
         direction: input
+        required: true
   - name: Outputs
     arguments:
       - name: "--output_train"
         __merge__: /src/api/file_train.yaml
-        required: true
+        type: file
         direction: output
+        required: true
       - name: "--output_test"
         __merge__: /src/api/file_test.yaml
-        required: true
+        type: file
         direction: output
+        required: true
       - name: "--output_solution"
         __merge__: /src/api/file_solution.yaml
-        required: true
+        type: file
         direction: output
+        required: true
 
 resources:
   - type: nextflow_script
     path: main.nf
     entrypoint: run_wf
-  - path: /common/nextflow_helpers/helper.nf
+  - type: file
+    path: /_viash.yaml
 
 dependencies:
-  - name: validation/check_dataset_with_schema
-    repository: openproblems
   - name: data_processors/process_dataset
 
 runners:
