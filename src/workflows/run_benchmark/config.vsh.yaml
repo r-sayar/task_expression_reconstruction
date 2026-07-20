@@ -75,6 +75,8 @@ dependencies:
   - name: methods/autoencoder
   - name: methods/scvi
   - name: metrics/statistical
+  - name: metrics/biological
+  - name: metrics/knn_purity
 
 runners:
   - type: nextflow

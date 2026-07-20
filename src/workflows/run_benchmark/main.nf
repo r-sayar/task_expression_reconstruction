@@ -25,9 +25,14 @@ control_components = [
 // All components that can produce a prediction.
 methods = method_components + control_components
 
-// Metric components.
+// Metric components. All three score every method run. `biological` and
+// `knn_purity` degrade to NA for the sub-metrics whose inputs an observational
+// dataset (e.g. LuCA) lacks (DEG/cytokine/perturbation pools), so they never
+// crash the benchmark.
 metrics = [
   statistical,
+  biological,
+  knn_purity,
 ]
 
 // ---------------------------------------------------------------------------
@@ -192,6 +197,12 @@ workflow run_wf {
     | runEach(
       components: metrics,
       id: { id, state, comp -> id + "." + comp.config.name },
+      // All three metrics take the standard (solution, prediction) pair.
+      // statistical scores directly; biological computes the sub-metrics whose
+      // inputs are present (cellcycle/coexpression/pathway) and reports the
+      // rest (DEG/cytokine) as NA; knn_purity has no perturbation pools here so
+      // it reports NA. The extra optional inputs (references, perturbation
+      // pools, cytokine signatures) are deliberately not passed.
       fromState: [
         input_solution: "input_solution",
         input_prediction: "method_output",

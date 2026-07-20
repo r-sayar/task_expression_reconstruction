@@ -87,18 +87,19 @@ metric_order = [
     "cytokine",
 ]
 
+# Always emit every declared sub-metric so that all method runs have a
+# consistent set of metric columns. Sub-metrics whose required inputs are
+# absent on this dataset (e.g. DEG/cytokine on observational LuCA) or that
+# could not be computed (e.g. no network to fetch gene sets) are reported as
+# NaN (NA) rather than dropped or raising an error.
 final_ids = []
 final_values = []
 for metric_id in metric_order:
     value = float(scores.get(metric_id, float("nan")))
     if math.isnan(value):
-        print(f"Skipping {metric_id} (not computed).", flush=True)
-        continue
+        print(f"{metric_id}: not computed on this dataset -> NA.", flush=True)
     final_ids.append(metric_id)
     final_values.append(value)
-
-if not final_ids:
-    raise RuntimeError("No biological metrics were computed.")
 
 print("Writing output", flush=True)
 write_score(
