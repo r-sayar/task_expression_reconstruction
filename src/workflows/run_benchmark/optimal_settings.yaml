@@ -1,0 +1,681 @@
+# Auto-generated from 'Optimal setting.md'. Best architecture per
+# (model, latent_size, split) for LuCA. Do not edit by hand.
+#
+# AE family (AE/olAE/mlAE): hidden_widths (per-layer), n_latent, max_epochs.
+# VAE family (scVI/mlscVI/nlscVI): n_hidden, n_latent, n_layers, max_kl_weight, max_epochs.
+optimal_settings:
+  "AE|10|split01":
+    model: AE
+    latent: 10
+    split: split01
+    max_epochs: 400
+    hidden_widths: "2048,2048,2048,2048"
+    n_layers: 4
+  "AE|10|split02":
+    model: AE
+    latent: 10
+    split: split02
+    max_epochs: 400
+    hidden_widths: "1024,1024,1024,1024"
+    n_layers: 4
+  "AE|10|split03":
+    model: AE
+    latent: 10
+    split: split03
+    max_epochs: 400
+    hidden_widths: "1024,1024,1024,1024"
+    n_layers: 4
+  "AE|128|split01":
+    model: AE
+    latent: 128
+    split: split01
+    max_epochs: 400
+    hidden_widths: "2048,2048"
+    n_layers: 2
+  "AE|128|split02":
+    model: AE
+    latent: 128
+    split: split02
+    max_epochs: 400
+    hidden_widths: "1024,1024,1024,1024"
+    n_layers: 4
+  "AE|128|split03":
+    model: AE
+    latent: 128
+    split: split03
+    max_epochs: 400
+    hidden_widths: "2048,2048,2048"
+    n_layers: 3
+  "AE|2048|split01":
+    model: AE
+    latent: 2048
+    split: split01
+    max_epochs: 400
+    hidden_widths: "4096"
+    n_layers: 1
+  "AE|2048|split02":
+    model: AE
+    latent: 2048
+    split: split02
+    max_epochs: 400
+    hidden_widths: "4096"
+    n_layers: 1
+  "AE|2048|split03":
+    model: AE
+    latent: 2048
+    split: split03
+    max_epochs: 400
+    hidden_widths: "4096"
+    n_layers: 1
+  "AE|32|split01":
+    model: AE
+    latent: 32
+    split: split01
+    max_epochs: 400
+    hidden_widths: "2048,2048,2048,2048"
+    n_layers: 4
+  "AE|32|split02":
+    model: AE
+    latent: 32
+    split: split02
+    max_epochs: 400
+    hidden_widths: "1024,1024,1024,1024"
+    n_layers: 4
+  "AE|32|split03":
+    model: AE
+    latent: 32
+    split: split03
+    max_epochs: 400
+    hidden_widths: "2048,2048,2048"
+    n_layers: 3
+  "AE|512|split01":
+    model: AE
+    latent: 512
+    split: split01
+    max_epochs: 400
+    hidden_widths: "4096,4096,4096"
+    n_layers: 3
+  "AE|512|split02":
+    model: AE
+    latent: 512
+    split: split02
+    max_epochs: 400
+    hidden_widths: "4096,4096,4096"
+    n_layers: 3
+  "AE|512|split03":
+    model: AE
+    latent: 512
+    split: split03
+    max_epochs: 400
+    hidden_widths: "4096,4096,4096"
+    n_layers: 3
+  "mlAE|10|split01":
+    model: mlAE
+    latent: 10
+    split: split01
+    max_epochs: 400
+    hidden_widths: "2048,2048,2048,2048"
+    n_layers: 4
+  "mlAE|10|split02":
+    model: mlAE
+    latent: 10
+    split: split02
+    max_epochs: 400
+    hidden_widths: "2048,2048,2048"
+    n_layers: 3
+  "mlAE|10|split03":
+    model: mlAE
+    latent: 10
+    split: split03
+    max_epochs: 400
+    hidden_widths: "1024,1024,1024,1024"
+    n_layers: 4
+  "mlAE|128|split01":
+    model: mlAE
+    latent: 128
+    split: split01
+    max_epochs: 400
+    hidden_widths: "1024,1024"
+    n_layers: 2
+  "mlAE|128|split02":
+    model: mlAE
+    latent: 128
+    split: split02
+    max_epochs: 400
+    hidden_widths: "1024"
+    n_layers: 1
+  "mlAE|128|split03":
+    model: mlAE
+    latent: 128
+    split: split03
+    max_epochs: 400
+    hidden_widths: "1024"
+    n_layers: 1
+  "mlAE|2048|split01":
+    model: mlAE
+    latent: 2048
+    split: split01
+    max_epochs: 400
+    hidden_widths: "4096"
+    n_layers: 1
+  "mlAE|2048|split02":
+    model: mlAE
+    latent: 2048
+    split: split02
+    max_epochs: 400
+    hidden_widths: "4096"
+    n_layers: 1
+  "mlAE|2048|split03":
+    model: mlAE
+    latent: 2048
+    split: split03
+    max_epochs: 400
+    hidden_widths: "4096,4096"
+    n_layers: 2
+  "mlAE|32|split01":
+    model: mlAE
+    latent: 32
+    split: split01
+    max_epochs: 400
+    hidden_widths: "4096,4096,4096"
+    n_layers: 3
+  "mlAE|32|split02":
+    model: mlAE
+    latent: 32
+    split: split02
+    max_epochs: 400
+    hidden_widths: "1024,1024"
+    n_layers: 2
+  "mlAE|32|split03":
+    model: mlAE
+    latent: 32
+    split: split03
+    max_epochs: 400
+    hidden_widths: "2048,2048"
+    n_layers: 2
+  "mlAE|512|split01":
+    model: mlAE
+    latent: 512
+    split: split01
+    max_epochs: 400
+    hidden_widths: "4096,4096"
+    n_layers: 2
+  "mlAE|512|split02":
+    model: mlAE
+    latent: 512
+    split: split02
+    max_epochs: 400
+    hidden_widths: "2048"
+    n_layers: 1
+  "mlAE|512|split03":
+    model: mlAE
+    latent: 512
+    split: split03
+    max_epochs: 400
+    hidden_widths: "2048"
+    n_layers: 1
+  "mlscVI|10|split01":
+    model: mlscVI
+    latent: 10
+    split: split01
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 4
+    max_kl_weight: 1.0
+  "mlscVI|10|split02":
+    model: mlscVI
+    latent: 10
+    split: split02
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 4
+    max_kl_weight: 1.0
+  "mlscVI|10|split03":
+    model: mlscVI
+    latent: 10
+    split: split03
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 3
+    max_kl_weight: 0.1
+  "mlscVI|128|split01":
+    model: mlscVI
+    latent: 128
+    split: split01
+    max_epochs: 400
+    n_hidden: 2048
+    n_layers: 2
+    max_kl_weight: 0.1
+  "mlscVI|128|split02":
+    model: mlscVI
+    latent: 128
+    split: split02
+    max_epochs: 400
+    n_hidden: 1024
+    n_layers: 2
+    max_kl_weight: 0.1
+  "mlscVI|128|split03":
+    model: mlscVI
+    latent: 128
+    split: split03
+    max_epochs: 400
+    n_hidden: 2048
+    n_layers: 4
+    max_kl_weight: 0.1
+  "mlscVI|2048|split01":
+    model: mlscVI
+    latent: 2048
+    split: split01
+    max_epochs: 400
+    n_hidden: 2048
+    n_layers: 1
+    max_kl_weight: 0.1
+  "mlscVI|2048|split02":
+    model: mlscVI
+    latent: 2048
+    split: split02
+    max_epochs: 400
+    n_hidden: 1024
+    n_layers: 1
+    max_kl_weight: 0.1
+  "mlscVI|2048|split03":
+    model: mlscVI
+    latent: 2048
+    split: split03
+    max_epochs: 400
+    n_hidden: 2048
+    n_layers: 1
+    max_kl_weight: 0.1
+  "mlscVI|32|split01":
+    model: mlscVI
+    latent: 32
+    split: split01
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 2
+    max_kl_weight: 0.1
+  "mlscVI|32|split02":
+    model: mlscVI
+    latent: 32
+    split: split02
+    max_epochs: 400
+    n_hidden: 1024
+    n_layers: 1
+    max_kl_weight: 0.1
+  "mlscVI|32|split03":
+    model: mlscVI
+    latent: 32
+    split: split03
+    max_epochs: 400
+    n_hidden: 1024
+    n_layers: 1
+    max_kl_weight: 1.0
+  "mlscVI|512|split01":
+    model: mlscVI
+    latent: 512
+    split: split01
+    max_epochs: 400
+    n_hidden: 2048
+    n_layers: 2
+    max_kl_weight: 1.0
+  "mlscVI|512|split02":
+    model: mlscVI
+    latent: 512
+    split: split02
+    max_epochs: 400
+    n_hidden: 2048
+    n_layers: 1
+    max_kl_weight: 0.1
+  "mlscVI|512|split03":
+    model: mlscVI
+    latent: 512
+    split: split03
+    max_epochs: 400
+    n_hidden: 2048
+    n_layers: 2
+    max_kl_weight: 0.1
+  "nlscVI|10|split01":
+    model: nlscVI
+    latent: 10
+    split: split01
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 3
+    max_kl_weight: 1.0
+  "nlscVI|10|split02":
+    model: nlscVI
+    latent: 10
+    split: split02
+    max_epochs: 400
+    n_hidden: 1024
+    n_layers: 3
+    max_kl_weight: 0.1
+  "nlscVI|10|split03":
+    model: nlscVI
+    latent: 10
+    split: split03
+    max_epochs: 400
+    n_hidden: 2048
+    n_layers: 3
+    max_kl_weight: 1.0
+  "nlscVI|128|split01":
+    model: nlscVI
+    latent: 128
+    split: split01
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 3
+    max_kl_weight: 0.1
+  "nlscVI|128|split02":
+    model: nlscVI
+    latent: 128
+    split: split02
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 2
+    max_kl_weight: 1.0
+  "nlscVI|128|split03":
+    model: nlscVI
+    latent: 128
+    split: split03
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 2
+    max_kl_weight: 1.0
+  "nlscVI|2048|split01":
+    model: nlscVI
+    latent: 2048
+    split: split01
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 1
+    max_kl_weight: 0.1
+  "nlscVI|2048|split02":
+    model: nlscVI
+    latent: 2048
+    split: split02
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 1
+    max_kl_weight: 0.1
+  "nlscVI|2048|split03":
+    model: nlscVI
+    latent: 2048
+    split: split03
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 1
+    max_kl_weight: 0.1
+  "nlscVI|32|split01":
+    model: nlscVI
+    latent: 32
+    split: split01
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 3
+    max_kl_weight: 1.0
+  "nlscVI|32|split02":
+    model: nlscVI
+    latent: 32
+    split: split02
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 2
+    max_kl_weight: 1.0
+  "nlscVI|32|split03":
+    model: nlscVI
+    latent: 32
+    split: split03
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 2
+    max_kl_weight: 0.1
+  "nlscVI|512|split01":
+    model: nlscVI
+    latent: 512
+    split: split01
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 2
+    max_kl_weight: 0.1
+  "nlscVI|512|split02":
+    model: nlscVI
+    latent: 512
+    split: split02
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 2
+    max_kl_weight: 0.1
+  "nlscVI|512|split03":
+    model: nlscVI
+    latent: 512
+    split: split03
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 2
+    max_kl_weight: 0.1
+  "olAE|10|split01":
+    model: olAE
+    latent: 10
+    split: split01
+    max_epochs: 400
+    hidden_widths: "2048,2048,2048"
+    n_layers: 3
+  "olAE|10|split02":
+    model: olAE
+    latent: 10
+    split: split02
+    max_epochs: 400
+    hidden_widths: "1024,1024,1024,1024"
+    n_layers: 4
+  "olAE|10|split03":
+    model: olAE
+    latent: 10
+    split: split03
+    max_epochs: 400
+    hidden_widths: "1024,1024,1024,1024"
+    n_layers: 4
+  "olAE|128|split01":
+    model: olAE
+    latent: 128
+    split: split01
+    max_epochs: 400
+    hidden_widths: "2048,2048"
+    n_layers: 2
+  "olAE|128|split02":
+    model: olAE
+    latent: 128
+    split: split02
+    max_epochs: 400
+    hidden_widths: "1024,1024"
+    n_layers: 2
+  "olAE|128|split03":
+    model: olAE
+    latent: 128
+    split: split03
+    max_epochs: 400
+    hidden_widths: "2048,2048"
+    n_layers: 2
+  "olAE|2048|split01":
+    model: olAE
+    latent: 2048
+    split: split01
+    max_epochs: 400
+    hidden_widths: "4096"
+    n_layers: 1
+  "olAE|2048|split02":
+    model: olAE
+    latent: 2048
+    split: split02
+    max_epochs: 400
+    hidden_widths: "4096"
+    n_layers: 1
+  "olAE|2048|split03":
+    model: olAE
+    latent: 2048
+    split: split03
+    max_epochs: 400
+    hidden_widths: "4096"
+    n_layers: 1
+  "olAE|32|split01":
+    model: olAE
+    latent: 32
+    split: split01
+    max_epochs: 400
+    hidden_widths: "1024,1024,1024,1024"
+    n_layers: 4
+  "olAE|32|split02":
+    model: olAE
+    latent: 32
+    split: split02
+    max_epochs: 400
+    hidden_widths: "1024,1024,1024,1024"
+    n_layers: 4
+  "olAE|32|split03":
+    model: olAE
+    latent: 32
+    split: split03
+    max_epochs: 400
+    hidden_widths: "2048,2048,2048"
+    n_layers: 3
+  "olAE|512|split01":
+    model: olAE
+    latent: 512
+    split: split01
+    max_epochs: 400
+    hidden_widths: "4096,4096"
+    n_layers: 2
+  "olAE|512|split02":
+    model: olAE
+    latent: 512
+    split: split02
+    max_epochs: 400
+    hidden_widths: "4096,4096"
+    n_layers: 2
+  "olAE|512|split03":
+    model: olAE
+    latent: 512
+    split: split03
+    max_epochs: 400
+    hidden_widths: "4096"
+    n_layers: 1
+  "scVI|10|split01":
+    model: scVI
+    latent: 10
+    split: split01
+    max_epochs: 400
+    n_hidden: 2048
+    n_layers: 4
+    max_kl_weight: 0.1
+  "scVI|10|split02":
+    model: scVI
+    latent: 10
+    split: split02
+    max_epochs: 400
+    n_hidden: 1024
+    n_layers: 4
+    max_kl_weight: 1.0
+  "scVI|10|split03":
+    model: scVI
+    latent: 10
+    split: split03
+    max_epochs: 400
+    n_hidden: 1024
+    n_layers: 4
+    max_kl_weight: 1.0
+  "scVI|128|split01":
+    model: scVI
+    latent: 128
+    split: split01
+    max_epochs: 400
+    n_hidden: 1024
+    n_layers: 1
+    max_kl_weight: 1.0
+  "scVI|128|split02":
+    model: scVI
+    latent: 128
+    split: split02
+    max_epochs: 400
+    n_hidden: 2048
+    n_layers: 2
+    max_kl_weight: 1.0
+  "scVI|128|split03":
+    model: scVI
+    latent: 128
+    split: split03
+    max_epochs: 400
+    n_hidden: 2048
+    n_layers: 2
+    max_kl_weight: 1.0
+  "scVI|2048|split01":
+    model: scVI
+    latent: 2048
+    split: split01
+    max_epochs: 400
+    n_hidden: 2048
+    n_layers: 1
+    max_kl_weight: 0.1
+  "scVI|2048|split02":
+    model: scVI
+    latent: 2048
+    split: split02
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 1
+    max_kl_weight: 0.1
+  "scVI|2048|split03":
+    model: scVI
+    latent: 2048
+    split: split03
+    max_epochs: 400
+    n_hidden: 4096
+    n_layers: 1
+    max_kl_weight: 0.1
+  "scVI|32|split01":
+    model: scVI
+    latent: 32
+    split: split01
+    max_epochs: 400
+    n_hidden: 1024
+    n_layers: 3
+    max_kl_weight: 0.1
+  "scVI|32|split02":
+    model: scVI
+    latent: 32
+    split: split02
+    max_epochs: 400
+    n_hidden: 1024
+    n_layers: 4
+    max_kl_weight: 0.1
+  "scVI|32|split03":
+    model: scVI
+    latent: 32
+    split: split03
+    max_epochs: 400
+    n_hidden: 1024
+    n_layers: 4
+    max_kl_weight: 0.1
+  "scVI|512|split01":
+    model: scVI
+    latent: 512
+    split: split01
+    max_epochs: 400
+    n_hidden: 2048
+    n_layers: 1
+    max_kl_weight: 0.1
+  "scVI|512|split02":
+    model: scVI
+    latent: 512
+    split: split02
+    max_epochs: 400
+    n_hidden: 2048
+    n_layers: 1
+    max_kl_weight: 0.1
+  "scVI|512|split03":
+    model: scVI
+    latent: 512
+    split: split03
+    max_epochs: 400
+    n_hidden: 2048
+    n_layers: 1
+    max_kl_weight: 0.1

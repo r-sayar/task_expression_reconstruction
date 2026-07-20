@@ -3,12 +3,19 @@ name: autoencoder
 info:
   preferred_normalization: log1p_cp10k
   label: Autoencoder
-  summary: Fully-connected autoencoder reconstruction.
+  summary: Fully-connected autoencoder reconstruction (AE / olAE / mlAE).
   description: |
     Trains a symmetric fully-connected autoencoder on training cells and
     reconstructs test expression by encoding then decoding. Uses the
     ReconEval h5ad datamodule for loading and a compact PyTorch training
     loop (no Lightning) so the container stays small.
+
+    The `library_size_mode` argument selects the model variant, matching the
+    ReconEval autoencoder family:
+
+      * `none`     -> AE   (plain autoencoder)
+      * `observed` -> olAE (decoder rescaled by the observed per-cell library)
+      * `modeled`  -> mlAE (decoder rescaled by a modeled per-cell library)
 arguments:
   - name: "--n_latent"
     type: integer
@@ -17,11 +24,27 @@ arguments:
   - name: "--n_hidden"
     type: integer
     default: 256
-    description: Width of each hidden layer.
+    description: |
+      Width of each hidden layer. Used when `--hidden_widths` is not given.
   - name: "--n_layers"
     type: integer
     default: 2
-    description: Number of hidden layers on the encoder (mirrored in decoder).
+    description: |
+      Number of hidden layers on the encoder (mirrored in decoder). Used when
+      `--hidden_widths` is not given.
+  - name: "--hidden_widths"
+    type: string
+    required: false
+    description: |
+      Explicit comma-separated per-layer hidden widths (e.g. "2048,2048,2048").
+      Overrides `--n_hidden`/`--n_layers`. This is how the tuned optimal
+      architectures are expressed.
+  - name: "--library_size_mode"
+    type: string
+    default: none
+    choices: [none, observed, modeled]
+    description: |
+      Library-size handling. `none`=AE, `observed`=olAE, `modeled`=mlAE.
   - name: "--epochs"
     type: integer
     default: 40
@@ -37,7 +60,7 @@ arguments:
   - name: "--seed"
     type: integer
     default: 0
-    description: Random seed.
+    description: Random seed (reaches model init and dataloader shuffle).
 resources:
   - type: python_script
     path: script.py
@@ -53,4 +76,4 @@ runners:
   - type: executable
   - type: nextflow
     directives:
-      label: [midtime, midmem, midcpu]
+      label: [hightime, highmem, midcpu, gpu]

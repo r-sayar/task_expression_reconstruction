@@ -5,16 +5,60 @@ workflow auto {
     )
 }
 
-methods = [
-  ground_truth,
+// ---------------------------------------------------------------------------
+// Components
+// ---------------------------------------------------------------------------
+// Method components (each may be instantiated with several variant/arch/seed
+// argument sets — see the run-spec expansion in run_wf below).
+method_components = [
   pca_reconstruction,
   autoencoder,
   scvi,
 ]
 
+// Control methods (run once, receive the solution).
+control_components = [
+  ground_truth,
+  negative_control,
+]
+
+// All components that can produce a prediction.
+methods = method_components + control_components
+
+// Metric components.
 metrics = [
   statistical,
 ]
+
+// ---------------------------------------------------------------------------
+// Benchmark grid
+// ---------------------------------------------------------------------------
+// The six benchmarked models map onto two Viash components via arguments:
+//   autoencoder: library_size_mode in {none, observed, modeled} -> AE/olAE/mlAE
+//   scvi:        variant in {scvi, mlscvi, nlscvi}
+// `settings_key` is the model name used in optimal_settings.yaml.
+model_variants = [
+  [model_id: "ae",     component: "autoencoder", settings_key: "AE",     args: [library_size_mode: "none"]],
+  [model_id: "olae",   component: "autoencoder", settings_key: "olAE",   args: [library_size_mode: "observed"]],
+  [model_id: "mlae",   component: "autoencoder", settings_key: "mlAE",   args: [library_size_mode: "modeled"]],
+  [model_id: "scvi",   component: "scvi",        settings_key: "scVI",   args: [variant: "scvi"]],
+  [model_id: "mlscvi", component: "scvi",        settings_key: "mlscVI", args: [variant: "mlscvi"]],
+  [model_id: "nlscvi", component: "scvi",        settings_key: "nlscVI", args: [variant: "nlscvi"]],
+]
+
+latent_sizes = [10, 32, 128, 512, 2048]
+seeds        = [0, 1, 2, 3, 4]
+
+// Derive the split id (split01/02/03) for a dataset from its uns.
+def resolveSplit(dataset_uns) {
+  if (dataset_uns?.split) {
+    return dataset_uns.split as String
+  }
+  // fall back to a split token inside the dataset_id (e.g. luca_split02)
+  def did = (dataset_uns?.dataset_id ?: "") as String
+  def m = (did =~ /(split0[0-9])/)
+  return m ? m.group(1) : "split01"
+}
 
 workflow run_wf {
   take:
@@ -22,6 +66,13 @@ workflow run_wf {
 
   main:
 
+  // Load the tuned optimal architectures (model|latent|split -> arch).
+  // optimal_settings.yaml is bundled as a workflow resource (see config).
+  def optimal = readYaml(meta.resources_dir.resolve("optimal_settings.yaml")).optimal_settings
+
+  /****************************
+   * EXTRACT DATASET METADATA *
+   ****************************/
   dataset_ch = input_ch
     | map { id, state ->
       [id, state + ["_meta": [join_id: id]]]
@@ -33,24 +84,99 @@ workflow run_wf {
       }
     )
 
-  score_ch = dataset_ch
+  /***********************************************
+   * EXPAND INTO PER-(model,latent,seed) RUN SPECS *
+   ***********************************************/
+  // Each spec resolves the optimal architecture for this dataset's split and
+  // stamps the fixed component args (including the seed) and a stable method_id
+  // that is shared across seeds so downstream aggregation averages over seeds.
+  method_run_ch = dataset_ch
+    | flatMap { id, state ->
+      def split = resolveSplit(state.dataset_uns)
+      def specs = []
+
+      // tuned model variants x latent x seed
+      model_variants.each { mv ->
+        latent_sizes.each { latent ->
+          def key = "${mv.settings_key}|${latent}|${split}".toString()
+          def arch = optimal[key]
+          if (arch == null) {
+            System.err.println("run_benchmark: no optimal setting for ${key}; skipping")
+            return
+          }
+          seeds.each { seed ->
+            def method_args = [:] + mv.args
+            method_args.n_latent = latent
+            method_args.seed = seed
+            method_args.max_epochs = arch.max_epochs
+            if (mv.component == "autoencoder") {
+              method_args.hidden_widths = arch.hidden_widths
+            } else {
+              method_args.n_hidden = arch.n_hidden
+              method_args.n_layers = arch.n_layers
+              method_args.max_kl_weight = arch.max_kl_weight
+            }
+            // method_base_id is shared across seeds; run_id is unique per seed
+            // so per-seed outputs/checkpoints never collide.
+            def base_id = "${mv.model_id}_l${latent}".toString()
+            def run_id  = "${id}.${base_id}_s${seed}".toString()
+            specs << [run_id, state + [
+              method_component: mv.component,
+              method_base_id:   base_id,
+              method_args:      method_args,
+              seed:             seed,
+            ]]
+          }
+        }
+      }
+
+      // controls: run once each (no latent/seed grid)
+      control_components.each { comp ->
+        def base_id = comp.config.name
+        specs << ["${id}.${base_id}".toString(), state + [
+          method_component: base_id,
+          method_base_id:   base_id,
+          method_args:      [:],
+          seed:             null,
+        ]]
+      }
+
+      // PCA baseline: run once per latent (n_components = latent), no seed grid
+      latent_sizes.each { latent ->
+        def base_id = "pca_l${latent}".toString()
+        specs << ["${id}.${base_id}".toString(), state + [
+          method_component: "pca_reconstruction",
+          method_base_id:   base_id,
+          method_args:      [n_components: latent],
+          seed:             null,
+        ]]
+      }
+
+      specs
+    }
+
+  /***************************
+   * RUN METHODS AND METRICS *
+   ***************************/
+  score_ch = method_run_ch
     | runEach(
       components: methods,
+      // only run the component this spec targets, and only when normalization matches
       filter: { id, state, comp ->
+        def targets = state.method_component == comp.config.name
         def norm = state.dataset_uns.normalization_id
         def pref = comp.config.info.preferred_normalization
         def norm_check = norm == pref
-        def method_check = !state.method_ids || state.method_ids.contains(comp.config.name)
-        method_check && norm_check
+        def method_check = !state.method_ids || state.method_ids.contains(state.method_base_id)
+        targets && norm_check && method_check
       },
-      id: { id, state, comp ->
-        id + "." + comp.config.name
-      },
+      // the spec already carries a unique id; keep it
+      id: { id, state, comp -> id },
       fromState: { id, state, comp ->
         def args = [
           input_train: state.input_train,
           input_test: state.input_test,
-        ]
+        ] + (state.method_args ?: [:])
         if (comp.config.info.type == "control_method") {
           args.input_solution = state.input_solution
         }
@@ -58,16 +184,14 @@ workflow run_wf {
       },
       toState: { id, output, state, comp ->
         state + [
-          method_id: comp.config.name,
+          method_id: state.method_base_id,
           method_output: output.output,
         ]
       }
     )
     | runEach(
       components: metrics,
-      id: { id, state, comp ->
-        id + "." + comp.config.name
-      },
+      id: { id, state, comp -> id + "." + comp.config.name },
       fromState: [
         input_solution: "input_solution",
         input_prediction: "method_output",
@@ -83,7 +207,14 @@ workflow run_wf {
       key: "extract_scores",
       fromState: [input: "metric_output"],
       toState: { id, output, state ->
-        state + [score_uns: readYaml(output.output).uns]
+        // annotate each score with the base method id and seed so the
+        // downstream results processing can average mean +/- std over seeds
+        def score_uns = readYaml(output.output).uns
+        score_uns.method_id = state.method_base_id
+        if (state.seed != null) {
+          score_uns.seed = state.seed
+        }
+        state + [score_uns: score_uns]
       }
     )
     | joinStates { ids, states ->
@@ -94,6 +225,9 @@ workflow run_wf {
       ["output", [output_scores: score_uns_file]]
     }
 
+  /******************************
+   * GENERATE OUTPUT YAML FILES *
+   ******************************/
   meta_ch = dataset_ch
     | joinStates { ids, states ->
       def dataset_uns = states.collect { state ->

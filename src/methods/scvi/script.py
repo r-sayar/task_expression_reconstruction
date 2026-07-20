@@ -6,6 +6,7 @@ import numpy as np
 import scvi
 import torch
 
+# Allow local development (paper monorepo) without rebuilding Docker images.
 _repo_src = Path(__file__).resolve().parents[4] / "src"
 if _repo_src.is_dir() and str(_repo_src) not in sys.path:
     sys.path.insert(0, str(_repo_src))
@@ -17,20 +18,45 @@ par = {
     "input_train": "resources_test/reconeval/luca/train.h5ad",
     "input_test": "resources_test/reconeval/luca/test.h5ad",
     "output": "output.h5ad",
+    "variant": "scvi",
     "n_latent": 10,
     "n_hidden": 128,
     "n_layers": 1,
+    "gene_likelihood": None,
+    "max_kl_weight": 1.0,
     "max_epochs": 100,
     "seed": 0,
 }
 meta = {"name": "scvi"}
 ## VIASH END
 
+# Variant -> (gene_likelihood, use_observed_lib_size).
+#   scvi   : standard scVI, ZINB likelihood, observed library size
+#   mlscVI : modeled library size (use_observed_lib_size=False)
+#   nlscVI : Normal (Gaussian) likelihood VAE with library
+_VARIANTS = {
+    "scvi": {"gene_likelihood": "zinb", "use_observed_lib_size": True},
+    "mlscvi": {"gene_likelihood": "zinb", "use_observed_lib_size": False},
+    "nlscvi": {"gene_likelihood": "normal", "use_observed_lib_size": False},
+}
+
 
 def main() -> None:
-    scvi.settings.seed = int(par["seed"])
-    torch.manual_seed(int(par["seed"]))
-    np.random.seed(int(par["seed"]))
+    seed = int(par["seed"])
+    # scvi.settings.seed seeds torch/numpy/python AND the scvi-tools
+    # Lightning dataloader (shuffle), so the seed reaches both model init and
+    # data ordering.
+    scvi.settings.seed = seed
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
+    variant = str(par.get("variant", "scvi")).lower()
+    if variant not in _VARIANTS:
+        raise ValueError(f"Unknown scVI variant {variant!r}; choose from {list(_VARIANTS)}")
+    variant_kwargs = dict(_VARIANTS[variant])
+    # Allow an explicit gene_likelihood override (optional).
+    if par.get("gene_likelihood"):
+        variant_kwargs["gene_likelihood"] = par["gene_likelihood"]
 
     print(">> Load h5ad splits", flush=True)
     dm = H5adReconstructionDataModule(
@@ -41,16 +67,26 @@ def main() -> None:
     train_adata = dm.train_adata.copy()
     test_adata = dm.test_adata.copy()
 
-    print(f">> Setup SCVI on train {train_adata.shape}", flush=True)
+    print(
+        f">> Setup SCVI variant={variant} ({variant_kwargs}) on train "
+        f"{train_adata.shape}, seed={seed}",
+        flush=True,
+    )
     scvi.model.SCVI.setup_anndata(train_adata)
     model = scvi.model.SCVI(
         train_adata,
         n_latent=int(par["n_latent"]),
         n_hidden=int(par["n_hidden"]),
         n_layers=int(par["n_layers"]),
+        gene_likelihood=variant_kwargs["gene_likelihood"],
+        use_observed_lib_size=variant_kwargs["use_observed_lib_size"],
     )
     print(f">> Train for up to {par['max_epochs']} epochs", flush=True)
-    model.train(max_epochs=int(par["max_epochs"]))
+    plan_kwargs = {}
+    if par.get("max_kl_weight") is not None:
+        # KL warmup target weight (paper's max_kl_weight).
+        plan_kwargs["max_kl_weight"] = float(par["max_kl_weight"])
+    model.train(max_epochs=int(par["max_epochs"]), plan_kwargs=plan_kwargs or None)
 
     print(">> Predict normalized expression on test", flush=True)
     scvi.model.SCVI.setup_anndata(test_adata)

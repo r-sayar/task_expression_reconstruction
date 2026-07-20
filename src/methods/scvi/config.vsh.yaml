@@ -3,13 +3,27 @@ name: scvi
 info:
   preferred_normalization: counts
   label: scVI
-  summary: scvi-tools SCVI reconstruction (denoised expression).
+  summary: scvi-tools SCVI reconstruction (scVI / mlscVI / nlscVI).
   description: |
     Trains an ``scvi-tools`` SCVI model on the training AnnData and returns
     denoised (posterior mean) expression for the test cells via
     ``get_normalized_expression``. Expects raw counts in ``.X`` (i.e. the
     dataset was processed with ``preferred_normalization: counts``).
+
+    The `variant` argument selects the model, matching the ReconEval VAE
+    family:
+
+      * `scvi`   -> scVI   (ZINB likelihood, observed library size)
+      * `mlscvi` -> mlscVI (ZINB likelihood, modeled library size)
+      * `nlscvi` -> nlscVI (Normal/Gaussian likelihood, modeled library size)
 arguments:
+  - name: "--variant"
+    type: string
+    default: scvi
+    choices: [scvi, mlscvi, nlscvi]
+    description: |
+      scVI variant. `scvi`=standard, `mlscvi`=modeled library,
+      `nlscvi`=Normal-likelihood VAE.
   - name: "--n_latent"
     type: integer
     default: 10
@@ -22,6 +36,20 @@ arguments:
     type: integer
     default: 1
     description: Number of hidden layers in encoder/decoder.
+  - name: "--gene_likelihood"
+    type: string
+    required: false
+    choices: [zinb, nb, poisson, normal]
+    description: |
+      Optional explicit gene likelihood override. When unset, the value is
+      derived from `--variant`.
+  - name: "--max_kl_weight"
+    type: double
+    required: false
+    default: 1.0
+    description: |
+      Target KL warmup weight (the paper's `max_kl_weight`), passed to the
+      scvi-tools training plan.
   - name: "--max_epochs"
     type: integer
     default: 100
@@ -29,7 +57,7 @@ arguments:
   - name: "--seed"
     type: integer
     default: 0
-    description: Random seed.
+    description: Random seed (reaches model init and dataloader shuffle).
 resources:
   - type: python_script
     path: script.py
@@ -45,4 +73,4 @@ runners:
   - type: executable
   - type: nextflow
     directives:
-      label: [midtime, highmem, midcpu]
+      label: [hightime, highmem, midcpu, gpu]

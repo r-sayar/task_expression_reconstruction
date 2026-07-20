@@ -7,6 +7,7 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
 
+# Allow local development (paper monorepo) without rebuilding Docker images.
 _repo_src = Path(__file__).resolve().parents[4] / "src"
 if _repo_src.is_dir() and str(_repo_src) not in sys.path:
     sys.path.insert(0, str(_repo_src))
@@ -20,7 +21,9 @@ par = {
     "output": "output.h5ad",
     "n_latent": 32,
     "n_hidden": 256,
+    "hidden_widths": None,
     "n_layers": 2,
+    "library_size_mode": "none",
     "epochs": 40,
     "batch_size": 256,
     "learning_rate": 0.001,
@@ -30,29 +33,96 @@ meta = {"name": "autoencoder"}
 ## VIASH END
 
 
-def _build_mlp(in_dim: int, hidden: int, layers: int, out_dim: int) -> nn.Sequential:
-    blocks: list[nn.Module] = []
-    prev = in_dim
-    for _ in range(layers):
-        blocks += [nn.Linear(prev, hidden), nn.BatchNorm1d(hidden), nn.ReLU()]
-        prev = hidden
-    blocks.append(nn.Linear(prev, out_dim))
-    return nn.Sequential(*blocks)
+def _resolve_widths() -> list[int]:
+    """Return the per-layer hidden widths.
+
+    Prefer an explicit ``hidden_widths`` list (e.g. "2048,2048,2048,2048",
+    which is how the tuned optimal architectures are expressed). Otherwise
+    fall back to ``n_layers`` copies of ``n_hidden``.
+    """
+    hw = par.get("hidden_widths")
+    if hw:
+        if isinstance(hw, str):
+            widths = [int(x) for x in hw.replace("[", "").replace("]", "").split(",") if x.strip()]
+        else:
+            widths = [int(x) for x in hw]
+        if widths:
+            return widths
+    return [int(par["n_hidden"])] * int(par["n_layers"])
+
+
+class _Encoder(nn.Module):
+    def __init__(self, in_dim: int, widths: list[int], out_dim: int):
+        super().__init__()
+        layers: list[nn.Module] = []
+        prev = in_dim
+        for w in widths:
+            layers += [nn.Linear(prev, w), nn.BatchNorm1d(w), nn.ReLU(), nn.Dropout(0.1)]
+            prev = w
+        layers.append(nn.Linear(prev, out_dim))
+        self.net = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.net(x)
+
+
+class _Decoder(nn.Module):
+    def __init__(self, n_latent: int, widths: list[int], out_dim: int):
+        super().__init__()
+        layers: list[nn.Module] = []
+        prev = n_latent
+        for w in widths:
+            layers += [nn.Linear(prev, w), nn.BatchNorm1d(w), nn.ReLU(), nn.Dropout(0.0)]
+            prev = w
+        layers.append(nn.Linear(prev, out_dim))
+        self.net = nn.Sequential(*layers)
+        self.softmax = nn.Softmax(dim=-1)
+
+    def forward(self, x, library_size=None):
+        recon = self.net(x)
+        if library_size is not None:
+            # observed / modeled library: distribute over genes and rescale
+            recon = self.softmax(recon) * library_size
+        return recon
 
 
 class Autoencoder(nn.Module):
-    def __init__(self, n_vars: int, n_hidden: int, n_layers: int, n_latent: int):
-        super().__init__()
-        self.encoder = _build_mlp(n_vars, n_hidden, n_layers, n_latent)
-        self.decoder = _build_mlp(n_latent, n_hidden, n_layers, n_vars)
+    """Autoencoder with optional library-size handling.
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.decoder(self.encoder(x))
+    library_size_mode:
+      * "none"     -> plain AE                     (AE)
+      * "observed" -> library = row-sum of input   (olAE)
+      * "modeled"  -> library = exp(l_encoder(x))   (mlAE)
+
+    Mirrors ``sc_reconstruction.models.reconae.Autoencoder`` forward logic.
+    """
+
+    def __init__(self, n_vars: int, widths: list[int], n_latent: int, library_size_mode: str):
+        super().__init__()
+        if library_size_mode not in ("none", "observed", "modeled"):
+            raise ValueError("library_size_mode must be 'none', 'observed', or 'modeled'")
+        self.library_size_mode = library_size_mode
+        self.encoder = _Encoder(n_vars, widths, n_latent)
+        self.decoder = _Decoder(n_latent, widths[::-1], n_vars)
+        if library_size_mode == "modeled":
+            self.l_encoder = _Encoder(n_vars, [widths[0]], 1)
+
+    def forward(self, x):
+        z = self.encoder(x)
+        if self.library_size_mode == "none":
+            return self.decoder(z)
+        if self.library_size_mode == "observed":
+            library_size = torch.sum(x, dim=1, keepdim=True)
+            return self.decoder(z, library_size)
+        # modeled
+        library_size = torch.exp(self.l_encoder(x))
+        return self.decoder(z, library_size)
 
 
 def main() -> None:
-    torch.manual_seed(int(par["seed"]))
-    np.random.seed(int(par["seed"]))
+    seed = int(par["seed"])
+    torch.manual_seed(seed)
+    np.random.seed(seed)
 
     print(">> Load h5ad splits", flush=True)
     dm = H5adReconstructionDataModule(
@@ -67,24 +137,34 @@ def main() -> None:
     X_test = dm.get_test_matrix().astype(np.float32)
 
     n_vars = X_train.shape[1]
+    widths = _resolve_widths()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     model = Autoencoder(
         n_vars=n_vars,
-        n_hidden=int(par["n_hidden"]),
-        n_layers=int(par["n_layers"]),
+        widths=widths,
         n_latent=int(par["n_latent"]),
+        library_size_mode=par["library_size_mode"],
     ).to(device)
     optim = torch.optim.Adam(model.parameters(), lr=float(par["learning_rate"]))
+
+    # Seed the DataLoader shuffle explicitly so the seed reaches BOTH model
+    # init (above) and the dataloader ordering. (In the paper repo the loader
+    # used a hardcoded seed, so different seeds shared one data ordering.)
+    loader_gen = torch.Generator()
+    loader_gen.manual_seed(seed)
     loader = DataLoader(
         TensorDataset(torch.from_numpy(X_train)),
         batch_size=int(par["batch_size"]),
         shuffle=True,
+        generator=loader_gen,
         drop_last=X_train.shape[0] > int(par["batch_size"]),
     )
 
     print(
-        f">> Train AE on {X_train.shape} for {par['epochs']} epochs (device={device})",
+        f">> Train AE (mode={par['library_size_mode']}, widths={widths}, "
+        f"latent={par['n_latent']}) on {X_train.shape} for {par['epochs']} "
+        f"epochs, seed={seed} (device={device})",
         flush=True,
     )
     model.train()
