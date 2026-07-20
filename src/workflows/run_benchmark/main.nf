@@ -113,10 +113,12 @@ workflow run_wf {
             def method_args = [:] + mv.args
             method_args.n_latent = latent
             method_args.seed = seed
-            method_args.max_epochs = arch.max_epochs
             if (mv.component == "autoencoder") {
+              // autoencoder component exposes --epochs (not --max_epochs)
+              method_args.epochs = arch.max_epochs
               method_args.hidden_widths = arch.hidden_widths
             } else {
+              method_args.max_epochs = arch.max_epochs
               method_args.n_hidden = arch.n_hidden
               method_args.n_layers = arch.n_layers
               method_args.max_kl_weight = arch.max_kl_weight
