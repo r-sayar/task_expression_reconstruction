@@ -180,12 +180,21 @@ engines:
   - type: docker
     image: openproblems/base_python:1
     setup:
+      # WORKAROUND (theislab/ReconEval pyproject duplicates the wheel
+      # force-include of sc_reconstruction/__init__.py, so `pip install
+      # git+...ReconEval` fails to build a wheel). Until fixed upstream, install
+      # ReconEval from a sparse shallow clone placed on sys.path — no wheel build.
+      # Beyond openproblems/base_python:1 the biological metrics need pot (energy
+      # distance) plus decoupler + omnipath (pathway / coexpression gene sets).
       - type: python
         pip:
-          - git+https://github.com/theislab/ReconEval.git
+          - pot
           - decoupler>=2.1
           - omnipath>=1.0
           - blitzgsea>=1.3
+      - type: docker
+        run:
+          - git clone --depth 1 --filter=blob:none --sparse https://github.com/theislab/ReconEval.git /opt/ReconEval && git -C /opt/ReconEval sparse-checkout set src && printf '%s\n' /opt/ReconEval/src > "$(python -c 'import site; print(site.getsitepackages()[0])')/reconeval.pth"
 
 runners:
   - type: executable
