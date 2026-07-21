@@ -7,12 +7,6 @@ _repo_src = Path(__file__).resolve().parents[4] / "src"
 if _repo_src.is_dir() and str(_repo_src) not in sys.path:
     sys.path.insert(0, str(_repo_src))
 
-_common_dir = Path(__file__).resolve().parents[2] / "common"
-if str(_common_dir) not in sys.path:
-    sys.path.insert(0, str(_common_dir))
-
-from openproblems_utils import read_expression, write_score  # noqa: E402
-
 ## VIASH START
 par = {
     "input_solution": "resources_test/reconeval/luca/solution.h5ad",
@@ -27,6 +21,11 @@ par = {
 }
 meta = {"name": "knn_purity"}
 ## VIASH END
+
+# openproblems_utils.py is bundled next to this script by viash (meta["resources_dir"]);
+# fall back to the source-tree location for direct/local execution.
+sys.path.append(meta.get("resources_dir") or str(Path(__file__).resolve().parents[2] / "common"))
+from openproblems_utils import read_expression, write_score  # noqa: E402
 
 print("Reading prediction", flush=True)
 prediction = read_expression(
