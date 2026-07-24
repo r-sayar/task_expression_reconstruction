@@ -156,6 +156,61 @@ Omit `method_ids`/scale up `latents`/`seeds` for the full paper-scale grid
 (latent ∈ {10,32,128,512,2048}, 3 seeds, all 6 model variants + PCA +
 controls) — that needs the `gpu`-labelled queue and multi-hour walltimes.
 
+## 6. Component-metadata gotchas found while getting CI green
+
+Two `check_config.py` requirements are **per-component**, not inherited from
+`_viash.yaml`'s project-level `links:`/`references:` even though it looks
+like they should be:
+
+- `.links.documentation` — required for `method` and `metric` types (not
+  `control_method`/`data_processor`). Add `links: documentation: <url>` to
+  `src/api/comp_method.yaml` and `comp_metric*.yaml` so every component
+  inherits it via `__merge__`.
+- `.references.doi` (or `.bibtex`) — required for `method` type only. Add
+  `references: doi: [...]` to `comp_method.yaml`.
+
+Also: `run_and_check_output.py` resolves each test's expected input file path
+from the **argument's merged file-type `example:` field** (`src/api/file_*.yaml`),
+*not* from whatever `test_resources:` a component happens to declare. Keep
+every `file_*.yaml` `example:` path consistent (this repo had
+`file_prediction.yaml`/`file_score.yaml` pointing at a `reconeval_demo/`
+directory that no component's `test_resources:` actually populated — fixed by
+aligning them to `resources_test/reconeval/luca/`, matching train/test/solution
+and what `test_resources.sh` produces).
+
+And: the local-dev convenience fallback in every method/metric `script.py`
+(`Path(__file__).resolve().parents[4] / "src"`, meant to let you run against
+an uninstalled checkout) throws `IndexError` — not a caught exception — when
+the script runs from viash's shallow test-sandbox path. Guard the `parents`
+index length before using it.
+
+## 7. Known follow-up: HPC (curta) execution flakiness
+
+`viash ns build` and the pipeline logic both check out fine on curta — a full
+`nextflow run … -profile hpc` smoke test (`ground_truth`, `negative_control`,
+`pca_l10` against the real LuCA `split02` data, `/scratch/sayar99/reconeval`)
+got through `viash ns build` (`All 20 configs built successfully`) and
+launched the workflow. It then failed inside `extract_uns_metadata` (an
+`openproblems-bio/openproblems` utility, not a component in this repo) with:
+
+```
+ImportError: cannot import name '_errors' from partially initialized module 'h5py'
+(most likely due to a circular import) (/scratch/sayar99/reconeval/pylibs/h5py/__init__.py)
+```
+
+This is **not a code bug** — an identical interactive `apptainer exec ...
+python3 -c "import h5py"` against the same `pylibs`/image succeeds cleanly on
+one compute node (`c012`) but the Slurm-submitted job fails the same import on
+a different node (`c094`). That points at a node-dependent inconsistency in
+the ad-hoc `pip install --target /scratch/sayar99/reconeval/pylibs` "fat"
+environment from an earlier session (possibly a stale/partial squashfuse
+cache of the shared `.sif`, or an `.so` built against a libc/HDF5 version that
+isn't uniform across nodes) — `PYTHONDONTWRITEBYTECODE=1` and clearing
+`__pycache__` did not fix it. Rebuilding `pylibs` (or moving to per-component
+Apptainer images pulled straight from `ghcr.io` once `Build` publishes them,
+instead of one hand-maintained mega-environment) is the real fix; tracked as
+a follow-up, not blocking the CI work above.
+
 ## How this maps onto the OpenProblems v2 component API
 
 | OpenProblems concept | This task's realization |
