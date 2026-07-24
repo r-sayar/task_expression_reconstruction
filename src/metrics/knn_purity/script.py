@@ -3,8 +3,9 @@ from pathlib import Path
 
 import anndata as ad
 
-_repo_src = Path(__file__).resolve().parents[4] / "src"
-if _repo_src.is_dir() and str(_repo_src) not in sys.path:
+_parents = Path(__file__).resolve().parents
+_repo_src = _parents[4] / "src" if len(_parents) > 4 else None
+if _repo_src is not None and _repo_src.is_dir() and str(_repo_src) not in sys.path:
     sys.path.insert(0, str(_repo_src))
 
 ## VIASH START
