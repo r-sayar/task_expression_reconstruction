@@ -1,7 +1,7 @@
 __merge__: ../../api/comp_control_method.yaml
 name: negative_control
 info:
-  preferred_normalization: log1p_cp10k
+  preferred_normalization: log_cp10k
   label: Negative control (training mean)
   summary: Predicts the gene-wise training mean for every test cell.
   description: |

@@ -1,7 +1,7 @@
 __merge__: ../../api/comp_data_processor.yaml
 name: process_dataset
 info:
-  preferred_normalization: log1p_cp10k
+  preferred_normalization: log_cp10k
 arguments:
   - name: "--method"
     type: string

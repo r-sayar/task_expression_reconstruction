@@ -73,7 +73,7 @@ def main() -> None:
         f"{train_adata.shape}, seed={seed}",
         flush=True,
     )
-    # The dataset is log1p_cp10k in .X but retains raw counts in the "counts"
+    # The dataset is log_cp10k in .X but retains raw counts in the "counts"
     # layer; scVI must train on counts. Fall back to .X only if no counts layer.
     counts_layer = "counts" if "counts" in train_adata.layers else None
     print(f">> scVI reads counts from layer={counts_layer!r}", flush=True)

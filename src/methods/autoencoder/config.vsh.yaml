@@ -1,7 +1,7 @@
 __merge__: ../../api/comp_method.yaml
 name: autoencoder
 info:
-  preferred_normalization: log1p_cp10k
+  preferred_normalization: log_cp10k
   label: Autoencoder
   summary: Fully-connected autoencoder reconstruction (AE / olAE / mlAE).
   description: |
