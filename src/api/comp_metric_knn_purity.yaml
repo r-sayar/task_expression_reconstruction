@@ -75,5 +75,5 @@ test_resources:
     path: /common/component_tests/run_and_check_output.py
   - type: python_script
     path: /common/component_tests/check_config.py
-  - path: /resources_test/reconeval_demo
-    dest: resources_test/reconeval_demo
+  - path: /resources_test/reconeval/luca
+    dest: resources_test/reconeval/luca

@@ -1,5 +1,5 @@
 type: file
-example: "resources_test/reconeval_demo/score.h5ad"
+example: "resources_test/reconeval/luca/score.h5ad"
 label: Score
 summary: "File indicating the score of a metric."
 info:
