@@ -70,7 +70,8 @@ engines:
     setup:
       - type: python
         pip:
-          - git+https://github.com/theislab/ReconEval.git
+          # interim ReconEval source: r-sayar/ReconEval until theislab/ReconEval#3 (packaging fix) merges
+          - git+https://github.com/r-sayar/ReconEval.git
           - scvi-tools>=1.1
 runners:
   - type: executable
