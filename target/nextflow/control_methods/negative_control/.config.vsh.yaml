@@ -1,0 +1,264 @@
+name: "negative_control"
+namespace: "control_methods"
+version: "build_throwaway_build_registry_check"
+argument_groups:
+- name: "Arguments"
+  arguments:
+  - type: "file"
+    name: "--input_train"
+    label: "Training data"
+    summary: "Training cells for reconstruction methods."
+    info:
+      format:
+        type: "h5ad"
+        uns:
+        - type: "string"
+          name: "dataset_id"
+          description: "Unique dataset identifier"
+          required: true
+        - type: "string"
+          name: "normalization_id"
+          description: "Normalization applied to .X"
+          required: true
+    example:
+    - "resources_test/reconeval/luca/train.h5ad"
+    must_exist: true
+    create_parent: true
+    required: true
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "file"
+    name: "--input_test"
+    label: "Test data"
+    summary: "Held-out test cells whose expression will be reconstructed."
+    info:
+      format:
+        type: "h5ad"
+        uns:
+        - type: "string"
+          name: "dataset_id"
+          description: "Unique dataset identifier"
+          required: true
+        - type: "string"
+          name: "normalization_id"
+          description: "Normalization applied to .X"
+          required: true
+    example:
+    - "resources_test/reconeval/luca/test.h5ad"
+    must_exist: true
+    create_parent: true
+    required: true
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "file"
+    name: "--input_solution"
+    label: "Solution"
+    summary: "Ground-truth expression for held-out test cells."
+    info:
+      format:
+        type: "h5ad"
+        uns:
+        - type: "string"
+          name: "dataset_id"
+          description: "Unique dataset identifier"
+          required: true
+        - type: "string"
+          name: "normalization_id"
+          description: "Normalization applied to .X"
+          required: true
+    example:
+    - "resources_test/reconeval/luca/solution.h5ad"
+    must_exist: true
+    create_parent: true
+    required: true
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "file"
+    name: "--output"
+    label: "Predicted data"
+    summary: "Reconstructed gene expression as output by a method."
+    info:
+      format:
+        type: "h5ad"
+        uns:
+        - type: "string"
+          name: "dataset_id"
+          description: "A unique identifier for the dataset"
+          required: true
+        - type: "string"
+          name: "normalization_id"
+          description: "Which normalization was used"
+          required: true
+        - type: "string"
+          name: "method_id"
+          description: "A unique identifier for the method"
+          required: true
+    example:
+    - "resources_test/reconeval/luca/prediction.h5ad"
+    must_exist: true
+    create_parent: true
+    required: true
+    direction: "output"
+    multiple: false
+    multiple_sep: ";"
+resources:
+- type: "python_script"
+  path: "script.py"
+  is_executable: true
+test_resources:
+- type: "python_script"
+  path: "run_and_check_output.py"
+  is_executable: true
+- type: "file"
+  path: "resources_test/reconeval/luca"
+  dest: "resources_test/reconeval/luca"
+info:
+  preferred_normalization: "log_cp10k"
+  label: "Negative control (training mean)"
+  summary: "Predicts the gene-wise training mean for every test cell."
+  description: "Broadcasts the mean expression vector computed from training cells\
+    \ as the\nprediction for every test cell, completely ignoring test-cell identity.\n\
+    Any method that genuinely captures cell-state information should score\nstrictly\
+    \ above this baseline on all metrics.\n"
+  type: "control_method"
+  type_info:
+    label: "Control method"
+    summary: "A control method for sanity-checking the benchmark pipeline."
+    description: "A control method that copies ground-truth expression into the\n\
+      prediction slot to validate metric components.\n"
+status: "enabled"
+scope:
+  image: "public"
+  target: "public"
+repositories:
+- type: "github"
+  name: "openproblems"
+  repo: "openproblems-bio/openproblems"
+  tag: "build/main"
+license: "MIT"
+links:
+  repository: "https://github.com/openproblems-bio/task_expression_reconstruction"
+  docker_registry: "ghcr.io"
+  documentation: "https://reconeval.readthedocs.io"
+runners:
+- type: "executable"
+  id: "executable"
+  docker_setup_strategy: "ifneedbepullelsecachedbuild"
+- type: "nextflow"
+  id: "nextflow"
+  directives:
+    label:
+    - "lowtime"
+    - "lowmem"
+    - "lowcpu"
+    tag: "$id"
+  auto:
+    simplifyInput: true
+    simplifyOutput: false
+    transcript: false
+    publish: false
+  config:
+    labels:
+      lowmem: "memory = 20.Gb"
+      midmem: "memory = 50.Gb"
+      highmem: "memory = 100.Gb"
+      veryhighmem: "memory = 200.Gb"
+      lowcpu: "cpus = 5"
+      midcpu: "cpus = 15"
+      highcpu: "cpus = 30"
+      lowtime: "time = 1.h"
+      midtime: "time = 4.h"
+      hightime: "time = 8.h"
+      veryhightime: "time = 24.h"
+      gpu: "accelerator = 1, type = 'nvidia.com/gpu'"
+  debug: false
+  container: "docker"
+engines:
+- type: "docker"
+  id: "docker"
+  image: "openproblems/base_python:1"
+  namespace_separator: "/"
+  setup:
+  - type: "python"
+    user: false
+    packages:
+    - "anndata"
+    - "numpy"
+    upgrade: true
+  entrypoint: []
+  cmd: null
+build_info:
+  config: "src/control_methods/negative_control/config.vsh.yaml"
+  runner: "nextflow"
+  engine: "docker"
+  output: "target/nextflow/control_methods/negative_control"
+  executable: "target/nextflow/control_methods/negative_control/main.nf"
+  viash_version: "0.9.4"
+  git_commit: "07354e47782a37406becd26b0b94b733b93ea8aa"
+  git_remote: "https://github.com/r-sayar/task_expression_reconstruction"
+package_config:
+  name: "task_expression_reconstruction"
+  version: "build_throwaway_build_registry_check"
+  label: "Gene expression reconstruction"
+  summary: "Benchmark metrics and methods for reconstructing gene expression from\
+    \ single-cell latent representations."
+  description: "This OpenProblems task evaluates how well methods reconstruct gene\
+    \ expression\nfrom single-cell data. It provides Viash components for:\n\n1. **Data\
+    \ processing** — normalize LuCA (Human Lung Cancer Cell Atlas) h5ad\n   data,\
+    \ select HVGs, and split train/test cells.\n2. **Methods** — reconstruction models\
+    \ (PCA baseline, autoencoder variants\n   AE/olAE/mlAE, and VAE variants scVI/mlscVI/nlscVI).\n\
+    3. **Metrics** — statistical, biological, and perturbational (KNN purity)\n  \
+    \ reconstruction scores.\n\nDataset: `Human Lung Cancer Cell Atlas (LuCA)\n<https://cellxgene.cziscience.com/collections/edb893ee-4066-4128-9aec-5eb2b03f8287>`_\n"
+  info:
+    image: "thumbnail.svg"
+    test_resources:
+    - type: "s3"
+      path: "s3://openproblems-data/resources_test/common/"
+      dest: "resources_test/common"
+  repositories:
+  - type: "github"
+    name: "openproblems"
+    repo: "openproblems-bio/openproblems"
+    tag: "build/main"
+  viash_version: "0.9.4"
+  source: "src"
+  target: "target"
+  config_mods:
+  - ".runners[.type == \"nextflow\"].config.labels := { lowmem : \"memory = 20.Gb\"\
+    , midmem : \"memory = 50.Gb\", highmem : \"memory = 100.Gb\", veryhighmem : \"\
+    memory = 200.Gb\", lowcpu : \"cpus = 5\", midcpu : \"cpus = 15\", highcpu : \"\
+    cpus = 30\", lowtime : \"time = 1.h\", midtime : \"time = 4.h\", hightime : \"\
+    time = 8.h\", veryhightime : \"time = 24.h\", gpu : \"accelerator = 1, type =\
+    \ 'nvidia.com/gpu'\" }\n"
+  authors:
+  - name: "Xiaotong Fu"
+    roles:
+    - "author"
+    info:
+      github: "xiaotongfu"
+  - name: "Theis Lab"
+    roles:
+    - "author"
+    - "maintainer"
+    info:
+      github: "theislab"
+  keywords:
+  - "single-cell"
+  - "openproblems"
+  - "benchmark"
+  - "reconstruction"
+  - "reconeval"
+  - "luca"
+  license: "MIT"
+  organization: "r-sayar"
+  references:
+    doi:
+    - "10.64898/2026.06.15.731445"
+  links:
+    repository: "https://github.com/openproblems-bio/task_expression_reconstruction"
+    docker_registry: "ghcr.io"
+    documentation: "https://github.com/openproblems-bio/task_expression_reconstruction/blob/main/README.md"
+    issue_tracker: "https://github.com/openproblems-bio/task_expression_reconstruction/issues"

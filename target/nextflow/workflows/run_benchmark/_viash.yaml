@@ -1,0 +1,58 @@
+viash_version: 0.9.4
+name: task_expression_reconstruction
+organization: r-sayar
+version: build_throwaway_build_registry_check
+license: MIT
+keywords: [single-cell, openproblems, benchmark, reconstruction, reconeval, luca]
+links:
+  issue_tracker: https://github.com/openproblems-bio/task_expression_reconstruction/issues
+  repository: https://github.com/openproblems-bio/task_expression_reconstruction
+  docker_registry: ghcr.io
+  documentation: https://github.com/openproblems-bio/task_expression_reconstruction/blob/main/README.md
+label: Gene expression reconstruction
+summary: Benchmark metrics and methods for reconstructing gene expression from single-cell latent representations.
+description: |
+  This OpenProblems task evaluates how well methods reconstruct gene expression
+  from single-cell data. It provides Viash components for:
+
+  1. **Data processing** — normalize LuCA (Human Lung Cancer Cell Atlas) h5ad
+     data, select HVGs, and split train/test cells.
+  2. **Methods** — reconstruction models (PCA baseline, autoencoder variants
+     AE/olAE/mlAE, and VAE variants scVI/mlscVI/nlscVI).
+  3. **Metrics** — statistical, biological, and perturbational (KNN purity)
+     reconstruction scores.
+
+  Dataset: `Human Lung Cancer Cell Atlas (LuCA)
+  <https://cellxgene.cziscience.com/collections/edb893ee-4066-4128-9aec-5eb2b03f8287>`_
+references:
+  doi:
+    - 10.64898/2026.06.15.731445
+info:
+  image: thumbnail.svg
+  # NOTE: the reconeval/luca fixtures are intentionally NOT listed here.
+  # This list feeds the CI "sync-and-cache" step, which only understands s3/gs
+  # remote types; a type-less local `path:` entry makes it exit 1 before any
+  # component test runs (no S3 bucket write access exists to host them there).
+  # The LuCA fixtures are instead committed directly under
+  # resources_test/{common,reconeval}/luca/ (see scripts/create_resources/
+  # test_resources.sh) so viash finds them locally with nothing to fetch.
+  test_resources:
+    - type: s3
+      path: s3://openproblems-data/resources_test/common/
+      dest: resources_test/common
+authors:
+  - name: Xiaotong Fu
+    roles: [author]
+    info:
+      github: xiaotongfu
+  - name: Theis Lab
+    roles: [author, maintainer]
+    info:
+      github: theislab
+config_mods: |
+  .runners[.type == "nextflow"].config.labels := { lowmem : "memory = 20.Gb", midmem : "memory = 50.Gb", highmem : "memory = 100.Gb", veryhighmem : "memory = 200.Gb", lowcpu : "cpus = 5", midcpu : "cpus = 15", highcpu : "cpus = 30", lowtime : "time = 1.h", midtime : "time = 4.h", hightime : "time = 8.h", veryhightime : "time = 24.h", gpu : "accelerator = 1, type = 'nvidia.com/gpu'" }
+repositories:
+  - name: openproblems
+    type: github
+    repo: openproblems-bio/openproblems
+    tag: build/main
