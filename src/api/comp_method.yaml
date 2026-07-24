@@ -1,6 +1,9 @@
 namespace: "methods"
 links:
   documentation: https://reconeval.readthedocs.io
+references:
+  doi:
+    - 10.64898/2026.06.15.731445
 info:
   type: method
   type_info:
