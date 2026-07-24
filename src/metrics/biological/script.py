@@ -46,6 +46,13 @@ solution, prediction = align_genes(
     solution, prediction, resolve_genes=par["resolve_genes"]
 )
 
+# Default cell_cycle_genes to the bundled regev_lab list under resources_dir
+# when not supplied (a file-type default with a relative path fails viash's
+# up-front existence check).
+if not par.get("cell_cycle_genes"):
+    par["cell_cycle_genes"] = str(
+        Path(meta.get("resources_dir", ".")) / "resources" / "regev_lab_cell_cycle_genes.txt"
+    )
 s_genes, g2m_genes = load_cell_cycle_genes(par["cell_cycle_genes"])
 
 cytokine_dict = None
