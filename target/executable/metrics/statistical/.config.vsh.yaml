@@ -1,0 +1,339 @@
+name: "statistical"
+namespace: "metrics"
+version: "build_fix_ci_test_fixtures"
+argument_groups:
+- name: "Arguments"
+  arguments:
+  - type: "file"
+    name: "--input_solution"
+    label: "Solution"
+    summary: "Ground-truth expression for held-out test cells."
+    info:
+      format:
+        type: "h5ad"
+        uns:
+        - type: "string"
+          name: "dataset_id"
+          description: "Unique dataset identifier"
+          required: true
+        - type: "string"
+          name: "normalization_id"
+          description: "Normalization applied to .X"
+          required: true
+    example:
+    - "resources_test/reconeval/luca/solution.h5ad"
+    must_exist: true
+    create_parent: true
+    required: true
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "file"
+    name: "--input_prediction"
+    label: "Predicted data"
+    summary: "Reconstructed gene expression as output by a method."
+    info:
+      format:
+        type: "h5ad"
+        uns:
+        - type: "string"
+          name: "dataset_id"
+          description: "A unique identifier for the dataset"
+          required: true
+        - type: "string"
+          name: "normalization_id"
+          description: "Which normalization was used"
+          required: true
+        - type: "string"
+          name: "method_id"
+          description: "A unique identifier for the method"
+          required: true
+    example:
+    - "resources_test/reconeval/luca/prediction.h5ad"
+    must_exist: true
+    create_parent: true
+    required: true
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "file"
+    name: "--output"
+    label: "Score"
+    summary: "File indicating the score of a metric."
+    info:
+      format:
+        type: "h5ad"
+        uns:
+        - type: "string"
+          name: "dataset_id"
+          description: "A unique identifier for the dataset"
+          required: true
+        - type: "string"
+          name: "normalization_id"
+          description: "Which normalization was used"
+          required: true
+        - type: "string"
+          name: "method_id"
+          description: "A unique identifier for the method"
+          required: true
+        - type: "string"
+          name: "metric_ids"
+          description: "One or more unique metric identifiers"
+          multiple: true
+          required: true
+        - type: "double"
+          name: "metric_values"
+          description: "The metric values obtained for the given prediction. Must\
+            \ be of same length as 'metric_ids'."
+          multiple: true
+          required: true
+    example:
+    - "resources_test/reconeval/luca/score.h5ad"
+    must_exist: true
+    create_parent: true
+    required: true
+    direction: "output"
+    multiple: false
+    multiple_sep: ";"
+  - type: "string"
+    name: "--solution_layer"
+    description: "Where to read ground-truth expression: ``X`` for ``.X``, or the\
+      \ name of\nan ``.layers`` entry.\n"
+    info: null
+    default:
+    - "X"
+    required: false
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "string"
+    name: "--prediction_layer"
+    description: "Where to read predicted expression: ``X`` for ``.X``, or the name\
+      \ of\nan ``.layers`` entry.\n"
+    info: null
+    default:
+    - "X"
+    required: false
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "string"
+    name: "--resolve_genes"
+    description: "How to resolve differences in genes between solution and prediction.\n"
+    info: null
+    default:
+    - "intersection"
+    required: false
+    choices:
+    - "solution"
+    - "intersection"
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+resources:
+- type: "python_script"
+  path: "script.py"
+  is_executable: true
+- type: "file"
+  path: "openproblems_utils.py"
+test_resources:
+- type: "python_script"
+  path: "run_and_check_output.py"
+  is_executable: true
+- type: "python_script"
+  path: "check_config.py"
+  is_executable: true
+- type: "file"
+  path: "resources_test/reconeval/luca"
+  dest: "resources_test/reconeval/luca"
+info:
+  metrics:
+  - name: "r2"
+    label: "Gene-sum R²"
+    summary: "R² between gene-wise summed expression across cells."
+    description: "Coefficient of determination computed on the per-gene sum of expression\n\
+      across all cells in the solution and prediction matrices.\n"
+    min: "-inf"
+    max: 1
+    maximize: true
+    references:
+      bibtex: "@article{Fu2026.06.15.731445,\n  author = {Fu, Xiaotong and Klein,\
+        \ Dominik and Antipov, Egor and others},\n  title = {Benchmarking gene expression\
+        \ reconstruction from single-cell latent representations},\n  year = {2026},\n\
+        \  doi = {10.64898/2026.06.15.731445},\n  journal = {bioRxiv}\n}\n"
+    links:
+      documentation: "https://reconeval.readthedocs.io"
+  - name: "mse"
+    label: "Mean squared error"
+    summary: "Cell-wise mean squared error between matched cells."
+    description: "Mean squared error between solution and prediction expression matrices.\n\
+      Requires the same number of cells in both inputs (matched ``obs_names``).\n"
+    min: 0
+    max: "inf"
+    maximize: false
+    references:
+      bibtex: "@article{Fu2026.06.15.731445,\n  author = {Fu, Xiaotong and Klein,\
+        \ Dominik and Antipov, Egor and others},\n  title = {Benchmarking gene expression\
+        \ reconstruction from single-cell latent representations},\n  year = {2026},\n\
+        \  doi = {10.64898/2026.06.15.731445},\n  journal = {bioRxiv}\n}\n"
+    links:
+      documentation: "https://reconeval.readthedocs.io"
+  - name: "energy_distance"
+    label: "Energy distance"
+    summary: "Multivariate energy distance between cell distributions."
+    description: "Energy distance between the empirical distributions of cells in\n\
+      solution and prediction expression space.\n"
+    min: 0
+    max: "inf"
+    maximize: false
+    references:
+      bibtex: "@article{szekely:13,\n  author = {Sz\\'ekely, G\\'abor J. and Rizzo,\
+        \ Maria L.},\n  title = {Energy statistics: A class of statistics based on\
+        \ distances},\n  journal = {Journal of Statistical Planning and Inference},\n\
+        \  volume = {143},\n  number = {8},\n  pages = {1249--1272},\n  year = {2013}\n\
+        }\n"
+    links:
+      documentation: "https://reconeval.readthedocs.io"
+  type: "metric"
+  type_info:
+    label: "Metric"
+    summary: "A ReconEval gene-expression reconstruction metric."
+    description: "A metric that compares predicted reconstructed gene expression to\
+      \ the\nground-truth solution using the ReconEval benchmark suite.\n"
+status: "enabled"
+scope:
+  image: "public"
+  target: "public"
+repositories:
+- type: "github"
+  name: "openproblems"
+  repo: "openproblems-bio/openproblems"
+  tag: "build/main"
+license: "MIT"
+links:
+  repository: "https://github.com/openproblems-bio/task_expression_reconstruction"
+  docker_registry: "ghcr.io"
+  documentation: "https://reconeval.readthedocs.io"
+runners:
+- type: "executable"
+  id: "executable"
+  docker_setup_strategy: "ifneedbepullelsecachedbuild"
+- type: "nextflow"
+  id: "nextflow"
+  directives:
+    label:
+    - "midtime"
+    - "midmem"
+    - "midcpu"
+    tag: "$id"
+  auto:
+    simplifyInput: true
+    simplifyOutput: false
+    transcript: false
+    publish: false
+  config:
+    labels:
+      lowmem: "memory = 20.Gb"
+      midmem: "memory = 50.Gb"
+      highmem: "memory = 100.Gb"
+      veryhighmem: "memory = 200.Gb"
+      lowcpu: "cpus = 5"
+      midcpu: "cpus = 15"
+      highcpu: "cpus = 30"
+      lowtime: "time = 1.h"
+      midtime: "time = 4.h"
+      hightime: "time = 8.h"
+      veryhightime: "time = 24.h"
+      gpu: "accelerator = 1, type = 'nvidia.com/gpu'"
+  debug: false
+  container: "docker"
+engines:
+- type: "docker"
+  id: "docker"
+  image: "openproblems/base_python:1"
+  namespace_separator: "/"
+  setup:
+  - type: "python"
+    user: false
+    pip:
+    - "pot"
+    upgrade: true
+  - type: "docker"
+    run:
+    - "git clone --depth 1 --filter=blob:none --sparse https://github.com/theislab/ReconEval.git\
+      \ /opt/ReconEval && git -C /opt/ReconEval sparse-checkout set src && printf\
+      \ '%s\\n' /opt/ReconEval/src > \"$(python -c 'import site; print(site.getsitepackages()[0])')/reconeval.pth\""
+  entrypoint: []
+  cmd: null
+build_info:
+  config: "src/metrics/statistical/config.vsh.yaml"
+  runner: "executable"
+  engine: "docker"
+  output: "target/executable/metrics/statistical"
+  executable: "target/executable/metrics/statistical/statistical"
+  viash_version: "0.9.4"
+  git_commit: "ef5a043bc0f36622c085fad65d3ab68b8a8125f3"
+  git_remote: "https://github.com/r-sayar/task_expression_reconstruction"
+package_config:
+  name: "task_expression_reconstruction"
+  version: "build_fix_ci_test_fixtures"
+  label: "Gene expression reconstruction"
+  summary: "Benchmark metrics and methods for reconstructing gene expression from\
+    \ single-cell latent representations."
+  description: "This OpenProblems task evaluates how well methods reconstruct gene\
+    \ expression\nfrom single-cell data. It provides Viash components for:\n\n1. **Data\
+    \ processing** — normalize LuCA (Human Lung Cancer Cell Atlas) h5ad\n   data,\
+    \ select HVGs, and split train/test cells.\n2. **Methods** — reconstruction models\
+    \ (PCA baseline, autoencoder variants\n   AE/olAE/mlAE, and VAE variants scVI/mlscVI/nlscVI).\n\
+    3. **Metrics** — statistical, biological, and perturbational (KNN purity)\n  \
+    \ reconstruction scores.\n\nDataset: `Human Lung Cancer Cell Atlas (LuCA)\n<https://cellxgene.cziscience.com/collections/edb893ee-4066-4128-9aec-5eb2b03f8287>`_\n"
+  info:
+    image: "thumbnail.svg"
+    test_resources:
+    - type: "s3"
+      path: "s3://openproblems-data/resources_test/common/"
+      dest: "resources_test/common"
+  repositories:
+  - type: "github"
+    name: "openproblems"
+    repo: "openproblems-bio/openproblems"
+    tag: "build/main"
+  viash_version: "0.9.4"
+  source: "src"
+  target: "target"
+  config_mods:
+  - ".runners[.type == \"nextflow\"].config.labels := { lowmem : \"memory = 20.Gb\"\
+    , midmem : \"memory = 50.Gb\", highmem : \"memory = 100.Gb\", veryhighmem : \"\
+    memory = 200.Gb\", lowcpu : \"cpus = 5\", midcpu : \"cpus = 15\", highcpu : \"\
+    cpus = 30\", lowtime : \"time = 1.h\", midtime : \"time = 4.h\", hightime : \"\
+    time = 8.h\", veryhightime : \"time = 24.h\", gpu : \"accelerator = 1, type =\
+    \ 'nvidia.com/gpu'\" }\n"
+  authors:
+  - name: "Xiaotong Fu"
+    roles:
+    - "author"
+    info:
+      github: "xiaotongfu"
+  - name: "Theis Lab"
+    roles:
+    - "author"
+    - "maintainer"
+    info:
+      github: "theislab"
+  keywords:
+  - "single-cell"
+  - "openproblems"
+  - "benchmark"
+  - "reconstruction"
+  - "reconeval"
+  - "luca"
+  license: "MIT"
+  organization: "openproblems-bio"
+  references:
+    doi:
+    - "10.64898/2026.06.15.731445"
+  links:
+    repository: "https://github.com/openproblems-bio/task_expression_reconstruction"
+    docker_registry: "ghcr.io"
+    documentation: "https://github.com/openproblems-bio/task_expression_reconstruction/blob/main/README.md"
+    issue_tracker: "https://github.com/openproblems-bio/task_expression_reconstruction/issues"

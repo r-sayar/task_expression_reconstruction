@@ -1,0 +1,86 @@
+__merge__: ../../api/comp_method.yaml
+name: scvi
+info:
+  # The benchmark ships a single log_cp10k-normalized dataset that RETAINS a
+  # raw-counts layer; scVI reads that counts layer (see script) but must declare
+  # the dataset's normalization to pass run_benchmark's normalization filter.
+  preferred_normalization: log_cp10k
+  label: scVI
+  summary: scvi-tools SCVI reconstruction (scVI / mlscVI / nlscVI).
+  description: |
+    Trains an ``scvi-tools`` SCVI model on the training AnnData and returns
+    denoised (posterior mean) expression for the test cells via
+    ``get_normalized_expression``. Expects raw counts in ``.X`` (i.e. the
+    dataset was processed with ``preferred_normalization: counts``).
+
+    The `variant` argument selects the model, matching the ReconEval VAE
+    family:
+
+      * `scvi`   -> scVI   (ZINB likelihood, observed library size)
+      * `mlscvi` -> mlscVI (ZINB likelihood, modeled library size)
+      * `nlscvi` -> nlscVI (Normal/Gaussian likelihood, modeled library size)
+arguments:
+  - name: "--variant"
+    type: string
+    default: scvi
+    choices: [scvi, mlscvi, nlscvi]
+    description: |
+      scVI variant. `scvi`=standard, `mlscvi`=modeled library,
+      `nlscvi`=Normal-likelihood VAE.
+  - name: "--n_latent"
+    type: integer
+    default: 10
+    description: Dimension of the SCVI latent space.
+  - name: "--n_hidden"
+    type: integer
+    default: 128
+    description: Hidden layer width.
+  - name: "--n_layers"
+    type: integer
+    default: 1
+    description: Number of hidden layers in encoder/decoder.
+  - name: "--gene_likelihood"
+    type: string
+    required: false
+    choices: [zinb, nb, poisson, normal]
+    description: |
+      Optional explicit gene likelihood override. When unset, the value is
+      derived from `--variant`.
+  - name: "--max_kl_weight"
+    type: double
+    required: false
+    default: 1.0
+    description: |
+      Target KL warmup weight (the paper's `max_kl_weight`), passed to the
+      scvi-tools training plan.
+  - name: "--max_epochs"
+    type: integer
+    default: 100
+    description: Maximum training epochs.
+  - name: "--seed"
+    type: integer
+    default: 0
+    description: Random seed (reaches model init and dataloader shuffle).
+resources:
+  - type: python_script
+    path: script.py
+engines:
+  - type: docker
+    image: openproblems/base_python:1
+    setup:
+      # WORKAROUND (theislab/ReconEval pyproject duplicates the wheel
+      # force-include of sc_reconstruction/__init__.py, so `pip install
+      # git+...ReconEval` fails to build a wheel). Also, methods need
+      # sc_reconstruction.dataloaders.H5adReconstructionDataModule, which only
+      # exists on the r-sayar/ReconEval fork (not upstream theislab/ReconEval).
+      # Install from a sparse shallow clone of that fork placed on sys.path.
+      - type: python
+        pip: ["scvi-tools>=1.1"]
+      - type: docker
+        run:
+          - git clone --depth 1 --filter=blob:none --sparse https://github.com/r-sayar/ReconEval.git /opt/ReconEval && git -C /opt/ReconEval sparse-checkout set src && printf '%s\n' /opt/ReconEval/src > "$(python -c 'import site; print(site.getsitepackages()[0])')/reconeval.pth"
+runners:
+  - type: executable
+  - type: nextflow
+    directives:
+      label: [hightime, highmem, midcpu, gpu]

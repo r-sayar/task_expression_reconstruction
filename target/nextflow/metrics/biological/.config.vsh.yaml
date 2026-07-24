@@ -1,0 +1,495 @@
+name: "biological"
+namespace: "metrics"
+version: "build_fix_ci_test_fixtures"
+argument_groups:
+- name: "Arguments"
+  arguments:
+  - type: "file"
+    name: "--input_solution"
+    label: "Solution"
+    summary: "Ground-truth expression for held-out test cells."
+    info:
+      format:
+        type: "h5ad"
+        uns:
+        - type: "string"
+          name: "dataset_id"
+          description: "Unique dataset identifier"
+          required: true
+        - type: "string"
+          name: "normalization_id"
+          description: "Normalization applied to .X"
+          required: true
+    example:
+    - "resources_test/reconeval/luca/solution.h5ad"
+    must_exist: true
+    create_parent: true
+    required: true
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "file"
+    name: "--input_prediction"
+    label: "Predicted data"
+    summary: "Reconstructed gene expression as output by a method."
+    info:
+      format:
+        type: "h5ad"
+        uns:
+        - type: "string"
+          name: "dataset_id"
+          description: "A unique identifier for the dataset"
+          required: true
+        - type: "string"
+          name: "normalization_id"
+          description: "Which normalization was used"
+          required: true
+        - type: "string"
+          name: "method_id"
+          description: "A unique identifier for the method"
+          required: true
+    example:
+    - "resources_test/reconeval/luca/prediction.h5ad"
+    must_exist: true
+    create_parent: true
+    required: true
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "file"
+    name: "--output"
+    label: "Score"
+    summary: "File indicating the score of a metric."
+    info:
+      format:
+        type: "h5ad"
+        uns:
+        - type: "string"
+          name: "dataset_id"
+          description: "A unique identifier for the dataset"
+          required: true
+        - type: "string"
+          name: "normalization_id"
+          description: "Which normalization was used"
+          required: true
+        - type: "string"
+          name: "method_id"
+          description: "A unique identifier for the method"
+          required: true
+        - type: "string"
+          name: "metric_ids"
+          description: "One or more unique metric identifiers"
+          multiple: true
+          required: true
+        - type: "double"
+          name: "metric_values"
+          description: "The metric values obtained for the given prediction. Must\
+            \ be of same length as 'metric_ids'."
+          multiple: true
+          required: true
+    example:
+    - "resources_test/reconeval/luca/score.h5ad"
+    must_exist: true
+    create_parent: true
+    required: true
+    direction: "output"
+    multiple: false
+    multiple_sep: ";"
+  - type: "string"
+    name: "--solution_layer"
+    description: "Where to read ground-truth expression: ``X`` for ``.X``, or the\
+      \ name of\nan ``.layers`` entry.\n"
+    info: null
+    default:
+    - "X"
+    required: false
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "string"
+    name: "--prediction_layer"
+    description: "Where to read predicted expression: ``X`` for ``.X``, or the name\
+      \ of\nan ``.layers`` entry.\n"
+    info: null
+    default:
+    - "X"
+    required: false
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "string"
+    name: "--resolve_genes"
+    description: "How to resolve differences in genes between solution and prediction.\n"
+    info: null
+    default:
+    - "intersection"
+    required: false
+    choices:
+    - "solution"
+    - "intersection"
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "file"
+    name: "--cell_cycle_genes"
+    description: "Text file with S-phase then G2M-phase gene symbols."
+    info: null
+    default:
+    - "resources/regev_lab_cell_cycle_genes.txt"
+    must_exist: true
+    create_parent: true
+    required: false
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "file"
+    name: "--cytokine_signatures"
+    description: "Optional Immune Dictionary cytokine signature CSV. When omitted,\
+      \ the\ncytokine metric is skipped.\n"
+    info: null
+    must_exist: true
+    create_parent: true
+    required: false
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "file"
+    name: "--input_reference_solution"
+    label: "Solution"
+    summary: "Ground-truth expression for held-out test cells."
+    description: "Reference (e.g. control) ground truth for DEG metrics."
+    info:
+      format:
+        type: "h5ad"
+        uns:
+        - type: "string"
+          name: "dataset_id"
+          description: "Unique dataset identifier"
+          required: true
+        - type: "string"
+          name: "normalization_id"
+          description: "Normalization applied to .X"
+          required: true
+    example:
+    - "resources_test/reconeval/luca/solution.h5ad"
+    must_exist: true
+    create_parent: true
+    required: false
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "file"
+    name: "--input_reference_prediction"
+    label: "Predicted data"
+    summary: "Reconstructed gene expression as output by a method."
+    description: "Reference (e.g. control) prediction for DEG metrics."
+    info:
+      format:
+        type: "h5ad"
+        uns:
+        - type: "string"
+          name: "dataset_id"
+          description: "A unique identifier for the dataset"
+          required: true
+        - type: "string"
+          name: "normalization_id"
+          description: "Which normalization was used"
+          required: true
+        - type: "string"
+          name: "method_id"
+          description: "A unique identifier for the method"
+          required: true
+    example:
+    - "resources_test/reconeval/luca/prediction.h5ad"
+    must_exist: true
+    create_parent: true
+    required: false
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "string"
+    name: "--reference_solution_layer"
+    description: "Layer for the reference solution AnnData."
+    info: null
+    default:
+    - "X"
+    required: false
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "string"
+    name: "--reference_prediction_layer"
+    description: "Layer for the reference prediction AnnData."
+    info: null
+    default:
+    - "X"
+    required: false
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+  - type: "integer"
+    name: "--min_cells"
+    description: "Minimum cells per gene for biological metrics."
+    info: null
+    default:
+    - 20
+    required: false
+    direction: "input"
+    multiple: false
+    multiple_sep: ";"
+resources:
+- type: "python_script"
+  path: "script.py"
+  is_executable: true
+- type: "file"
+  path: "openproblems_utils.py"
+- type: "file"
+  path: "resources/regev_lab_cell_cycle_genes.txt"
+  dest: "resources/regev_lab_cell_cycle_genes.txt"
+test_resources:
+- type: "python_script"
+  path: "run_and_check_output.py"
+  is_executable: true
+- type: "python_script"
+  path: "check_config.py"
+  is_executable: true
+- type: "file"
+  path: "resources_test/reconeval/luca"
+  dest: "resources_test/reconeval/luca"
+info:
+  metrics:
+  - name: "cellcycle_proportion_same_phase"
+    label: "Cell-cycle phase agreement"
+    summary: "Fraction of cells assigned the same cell-cycle phase."
+    description: "Compares cell-cycle phase labels derived from S and G2M gene scores\n\
+      between solution and prediction.\n"
+    min: 0
+    max: 1
+    maximize: true
+    references:
+      bibtex: "@article{tirosh:16,\n  author = {Tirosh, Itay and Izar, Benjamin and\
+        \ Prakadan, Sanjay M. and others},\n  title = {Dissecting the multicellular\
+        \ ecosystem of metastatic melanoma by single-cell RNA-seq},\n  journal = {Science},\n\
+        \  volume = {352},\n  pages = {189--196},\n  year = {2016}\n}\n"
+    links:
+      documentation: "https://reconeval.readthedocs.io"
+  - name: "coexpression"
+    label: "Co-expression similarity"
+    summary: "Mean co-expression similarity over MSigDB Hallmark gene sets."
+    description: "Compares co-expression structure within MSigDB Hallmark gene sets\n\
+      between solution and prediction.\n"
+    min: -1
+    max: 1
+    maximize: true
+    references:
+      bibtex: "@article{subramanian:05,\n  author = {Subramanian, Aravind and Tamayo,\
+        \ Pablo and Mootha, Vamsi K. and others},\n  title = {Gene set enrichment\
+        \ analysis},\n  journal = {PNAS},\n  volume = {102},\n  pages = {15545--15550},\n\
+        \  year = {2005}\n}\n"
+    links:
+      documentation: "https://reconeval.readthedocs.io"
+  - name: "pathway"
+    label: "Pathway activity similarity"
+    summary: "Correlation of PROGENy ULM pathway activity scores."
+    description: "Compares PROGENy pathway activity scores between solution and\n\
+      prediction using decoupler.\n"
+    min: -1
+    max: 1
+    maximize: true
+    references:
+      bibtex: "@article{schubert:18,\n  author = {Schubert, Michael and others},\n\
+        \  title = {Perturbation-response genes reveal signaling footprints in cancer\
+        \ gene expression},\n  journal = {Nature Communications},\n  year = {2018}\n\
+        }\n"
+    links:
+      documentation: "https://reconeval.readthedocs.io"
+  - name: "deg_dice_at_100"
+    label: "DEG Dice@100"
+    summary: "Dice overlap of top-100 differentially expressed genes."
+    description: "Overlap of the top 100 differentially expressed genes between\n\
+      perturbed and reference conditions in solution vs prediction.\n"
+    min: 0
+    max: 1
+    maximize: true
+    references:
+      bibtex: "@article{Fu2026.06.15.731445,\n  author = {Fu, Xiaotong and Klein,\
+        \ Dominik and Antipov, Egor and others},\n  title = {Benchmarking gene expression\
+        \ reconstruction from single-cell latent representations},\n  year = {2026},\n\
+        \  doi = {10.64898/2026.06.15.731445},\n  journal = {bioRxiv}\n}\n"
+    links:
+      documentation: "https://reconeval.readthedocs.io"
+  - name: "deg_logfc_spearman"
+    label: "DEG logFC Spearman"
+    summary: "Spearman correlation of gene-wise log fold-changes."
+    description: "Spearman correlation between gene-wise log fold-changes computed\n\
+      relative to a reference condition.\n"
+    min: -1
+    max: 1
+    maximize: true
+    references:
+      bibtex: "@article{Fu2026.06.15.731445,\n  author = {Fu, Xiaotong and Klein,\
+        \ Dominik and Antipov, Egor and others},\n  title = {Benchmarking gene expression\
+        \ reconstruction from single-cell latent representations},\n  year = {2026},\n\
+        \  doi = {10.64898/2026.06.15.731445},\n  journal = {bioRxiv}\n}\n"
+    links:
+      documentation: "https://reconeval.readthedocs.io"
+  - name: "cytokine"
+    label: "Cytokine activity similarity"
+    summary: "Correlation of cytokine activity scores."
+    description: "Compares cytokine activity scores derived from Immune Dictionary\n\
+      signatures between solution and prediction.\n"
+    min: -1
+    max: 1
+    maximize: true
+    references:
+      bibtex: "@article{cui:24,\n  author = {Cui, Ang and others},\n  title = {Dictionary\
+        \ of immune responses to cytokines across cell types},\n  journal = {Nature},\n\
+        \  year = {2024}\n}\n"
+    links:
+      documentation: "https://reconeval.readthedocs.io"
+  type: "metric"
+  type_info:
+    label: "Metric"
+    summary: "A ReconEval gene-expression reconstruction metric."
+    description: "A metric that compares predicted reconstructed gene expression to\
+      \ the\nground-truth solution using the ReconEval benchmark suite.\n"
+status: "enabled"
+scope:
+  image: "public"
+  target: "public"
+repositories:
+- type: "github"
+  name: "openproblems"
+  repo: "openproblems-bio/openproblems"
+  tag: "build/main"
+license: "MIT"
+links:
+  repository: "https://github.com/openproblems-bio/task_expression_reconstruction"
+  docker_registry: "ghcr.io"
+  documentation: "https://reconeval.readthedocs.io"
+runners:
+- type: "executable"
+  id: "executable"
+  docker_setup_strategy: "ifneedbepullelsecachedbuild"
+- type: "nextflow"
+  id: "nextflow"
+  directives:
+    label:
+    - "midtime"
+    - "highmem"
+    - "midcpu"
+    tag: "$id"
+  auto:
+    simplifyInput: true
+    simplifyOutput: false
+    transcript: false
+    publish: false
+  config:
+    labels:
+      lowmem: "memory = 20.Gb"
+      midmem: "memory = 50.Gb"
+      highmem: "memory = 100.Gb"
+      veryhighmem: "memory = 200.Gb"
+      lowcpu: "cpus = 5"
+      midcpu: "cpus = 15"
+      highcpu: "cpus = 30"
+      lowtime: "time = 1.h"
+      midtime: "time = 4.h"
+      hightime: "time = 8.h"
+      veryhightime: "time = 24.h"
+      gpu: "accelerator = 1, type = 'nvidia.com/gpu'"
+  debug: false
+  container: "docker"
+engines:
+- type: "docker"
+  id: "docker"
+  image: "openproblems/base_python:1"
+  namespace_separator: "/"
+  setup:
+  - type: "python"
+    user: false
+    pip:
+    - "pot"
+    - "decoupler>=2.1"
+    - "omnipath>=1.0"
+    - "blitzgsea>=1.3"
+    upgrade: true
+  - type: "docker"
+    run:
+    - "git clone --depth 1 --filter=blob:none --sparse https://github.com/theislab/ReconEval.git\
+      \ /opt/ReconEval && git -C /opt/ReconEval sparse-checkout set src && printf\
+      \ '%s\\n' /opt/ReconEval/src > \"$(python -c 'import site; print(site.getsitepackages()[0])')/reconeval.pth\""
+  entrypoint: []
+  cmd: null
+build_info:
+  config: "src/metrics/biological/config.vsh.yaml"
+  runner: "nextflow"
+  engine: "docker"
+  output: "target/nextflow/metrics/biological"
+  executable: "target/nextflow/metrics/biological/main.nf"
+  viash_version: "0.9.4"
+  git_commit: "ef5a043bc0f36622c085fad65d3ab68b8a8125f3"
+  git_remote: "https://github.com/r-sayar/task_expression_reconstruction"
+package_config:
+  name: "task_expression_reconstruction"
+  version: "build_fix_ci_test_fixtures"
+  label: "Gene expression reconstruction"
+  summary: "Benchmark metrics and methods for reconstructing gene expression from\
+    \ single-cell latent representations."
+  description: "This OpenProblems task evaluates how well methods reconstruct gene\
+    \ expression\nfrom single-cell data. It provides Viash components for:\n\n1. **Data\
+    \ processing** — normalize LuCA (Human Lung Cancer Cell Atlas) h5ad\n   data,\
+    \ select HVGs, and split train/test cells.\n2. **Methods** — reconstruction models\
+    \ (PCA baseline, autoencoder variants\n   AE/olAE/mlAE, and VAE variants scVI/mlscVI/nlscVI).\n\
+    3. **Metrics** — statistical, biological, and perturbational (KNN purity)\n  \
+    \ reconstruction scores.\n\nDataset: `Human Lung Cancer Cell Atlas (LuCA)\n<https://cellxgene.cziscience.com/collections/edb893ee-4066-4128-9aec-5eb2b03f8287>`_\n"
+  info:
+    image: "thumbnail.svg"
+    test_resources:
+    - type: "s3"
+      path: "s3://openproblems-data/resources_test/common/"
+      dest: "resources_test/common"
+  repositories:
+  - type: "github"
+    name: "openproblems"
+    repo: "openproblems-bio/openproblems"
+    tag: "build/main"
+  viash_version: "0.9.4"
+  source: "src"
+  target: "target"
+  config_mods:
+  - ".runners[.type == \"nextflow\"].config.labels := { lowmem : \"memory = 20.Gb\"\
+    , midmem : \"memory = 50.Gb\", highmem : \"memory = 100.Gb\", veryhighmem : \"\
+    memory = 200.Gb\", lowcpu : \"cpus = 5\", midcpu : \"cpus = 15\", highcpu : \"\
+    cpus = 30\", lowtime : \"time = 1.h\", midtime : \"time = 4.h\", hightime : \"\
+    time = 8.h\", veryhightime : \"time = 24.h\", gpu : \"accelerator = 1, type =\
+    \ 'nvidia.com/gpu'\" }\n"
+  authors:
+  - name: "Xiaotong Fu"
+    roles:
+    - "author"
+    info:
+      github: "xiaotongfu"
+  - name: "Theis Lab"
+    roles:
+    - "author"
+    - "maintainer"
+    info:
+      github: "theislab"
+  keywords:
+  - "single-cell"
+  - "openproblems"
+  - "benchmark"
+  - "reconstruction"
+  - "reconeval"
+  - "luca"
+  license: "MIT"
+  organization: "openproblems-bio"
+  references:
+    doi:
+    - "10.64898/2026.06.15.731445"
+  links:
+    repository: "https://github.com/openproblems-bio/task_expression_reconstruction"
+    docker_registry: "ghcr.io"
+    documentation: "https://github.com/openproblems-bio/task_expression_reconstruction/blob/main/README.md"
+    issue_tracker: "https://github.com/openproblems-bio/task_expression_reconstruction/issues"
