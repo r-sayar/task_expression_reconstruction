@@ -1,5 +1,8 @@
 /resources
 /resources_test
+# Small synthetic LuCA fixtures under resources_test/{common,reconeval}/luca/
+# ARE committed (force-added with `git add -f`) so viash test_resources
+# resolve locally without S3 bucket access — see _viash.yaml note.
 /work
 /.nextflow*
 /target

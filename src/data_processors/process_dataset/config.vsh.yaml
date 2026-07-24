@@ -36,7 +36,8 @@ engines:
     image: openproblems/base_python:1
     setup:
       - type: python
-        packages: [scanpy, anndata, scikit-learn]
+        # scikit-misc: seurat_v3 HVG selection needs skmisc.loess.
+        packages: [scanpy, anndata, scikit-learn, scikit-misc]
 runners:
   - type: executable
   - type: nextflow
