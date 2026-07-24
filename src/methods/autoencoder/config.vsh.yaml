@@ -70,13 +70,15 @@ engines:
     setup:
       # WORKAROUND (theislab/ReconEval pyproject duplicates the wheel
       # force-include of sc_reconstruction/__init__.py, so `pip install
-      # git+...ReconEval` fails to build a wheel). Until fixed upstream, install
-      # ReconEval from a sparse shallow clone placed on sys.path — no wheel build.
+      # git+...ReconEval` fails to build a wheel). Also, methods need
+      # sc_reconstruction.dataloaders.H5adReconstructionDataModule, which only
+      # exists on the r-sayar/ReconEval fork (not upstream theislab/ReconEval).
+      # Install from a sparse shallow clone of that fork placed on sys.path.
       - type: python
         pip: [torch]
       - type: docker
         run:
-          - git clone --depth 1 --filter=blob:none --sparse https://github.com/theislab/ReconEval.git /opt/ReconEval && git -C /opt/ReconEval sparse-checkout set src && printf '%s\n' /opt/ReconEval/src > "$(python -c 'import site; print(site.getsitepackages()[0])')/reconeval.pth"
+          - git clone --depth 1 --filter=blob:none --sparse https://github.com/r-sayar/ReconEval.git /opt/ReconEval && git -C /opt/ReconEval sparse-checkout set src && printf '%s\n' /opt/ReconEval/src > "$(python -c 'import site; print(site.getsitepackages()[0])')/reconeval.pth"
 runners:
   - type: executable
   - type: nextflow
