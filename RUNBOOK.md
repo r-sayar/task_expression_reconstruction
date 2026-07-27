@@ -234,6 +234,41 @@ after each task (no `afterScript` cleanup) — with ~166GB free per node and
 ~2.3GB per copy this isn't urgent, but repeated runs on the same node do
 accumulate.
 
+## 8. `biological` metric: fully validated, one new sub-issue found
+
+Two separate bugs previously made `biological`'s sub-metrics always
+degrade to `NA`:
+
+- **The hang** — `metrics/biological/script.py` fixed via
+  `socket.setdefaulttimeout(120)` (see commit history); root cause was
+  mostly the Lustre import-chain slowness above, not the network fetch
+  itself.
+- **`pathway` always NaN** — `metric_pathway` (in `r-sayar/ReconEval`,
+  `src/sc_reconstruction/metrics/api.py:201`) called `dc.get_progeny(...)`,
+  which decoupler>=2.1 (the pinned version) removed entirely in favor of
+  `dc.op.progeny(...)` — every call raised `AttributeError`, silently
+  caught, degrading to NaN. Fixed in
+  [r-sayar/ReconEval#1](https://github.com/r-sayar/ReconEval/pull/1).
+
+With both fixed, a real run with `biological` in the metrics list
+completed successfully (`nextflow exit code: 0`) and `cellcycle_
+proportion_same_phase` produced real values (`ground_truth`: 1.0,
+`pca_l10`: 0.42, `negative_control`: 0.2 — a sensible ordering). `pathway`
+was still NaN on this run, but for a legitimate reason now: the log shows
+`_pathway.py:359: UserWarning: No pathways passed overlap threshold (5)`
+with no preceding fetch error, meaning `dc.op.progeny()` succeeded and
+execution reached the actual gene-overlap check — the tiny synthetic test
+dataset (80 genes total) just doesn't overlap enough with any real PROGENy
+pathway's gene set. Expect real `pathway` values on the full LuCA dataset.
+
+**New issue found, not yet fixed**: `coexpression` failed with
+`[Errno 30] Read-only file system: '/home/sayar99'` — `omnipath`'s MSigDB
+fetch (used by `metric_coexpression`) tries to write a cache file under
+the user's home directory, which is mounted read-only on Curta compute
+nodes. Needs an explicit cache/config dir override (e.g.
+`OMNIPATH_CACHE_DIR` or similar pointed at `/localscratch` or `/scratch`)
+before `coexpression` can compute a real value on this cluster.
+
 ## How this maps onto the OpenProblems v2 component API
 
 | OpenProblems concept | This task's realization |
