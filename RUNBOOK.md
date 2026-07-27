@@ -184,32 +184,55 @@ an uninstalled checkout) throws `IndexError` — not a caught exception — when
 the script runs from viash's shallow test-sandbox path. Guard the `parents`
 index length before using it.
 
-## 7. Known follow-up: HPC (curta) execution flakiness
+## 7. HPC (curta): node-dependent flakiness, and the I/O fix that resolved it
 
-`viash ns build` and the pipeline logic both check out fine on curta — a full
-`nextflow run … -profile hpc` smoke test (`ground_truth`, `negative_control`,
-`pca_l10` against the real LuCA `split02` data, `/scratch/sayar99/reconeval`)
-got through `viash ns build` (`All 20 configs built successfully`) and
-launched the workflow. It then failed inside `extract_uns_metadata` (an
-`openproblems-bio/openproblems` utility, not a component in this repo) with:
+An earlier `nextflow run … -profile hpc` smoke test failed inside
+`extract_uns_metadata` (an `openproblems-bio/openproblems` utility, not a
+component in this repo) with:
 
 ```
 ImportError: cannot import name '_errors' from partially initialized module 'h5py'
 (most likely due to a circular import) (/scratch/sayar99/reconeval/pylibs/h5py/__init__.py)
 ```
 
-This is **not a code bug** — an identical interactive `apptainer exec ...
-python3 -c "import h5py"` against the same `pylibs`/image succeeds cleanly on
-one compute node (`c012`) but the Slurm-submitted job fails the same import on
-a different node (`c094`). That points at a node-dependent inconsistency in
-the ad-hoc `pip install --target /scratch/sayar99/reconeval/pylibs` "fat"
-environment from an earlier session (possibly a stale/partial squashfuse
-cache of the shared `.sif`, or an `.so` built against a libc/HDF5 version that
-isn't uniform across nodes) — `PYTHONDONTWRITEBYTECODE=1` and clearing
-`__pycache__` did not fix it. Rebuilding `pylibs` (or moving to per-component
-Apptainer images pulled straight from `ghcr.io` once `Build` publishes them,
-instead of one hand-maintained mega-environment) is the real fix; tracked as
-a follow-up, not blocking the CI work above.
+An identical interactive `apptainer exec ... python3 -c "import h5py"` against
+the same `pylibs`/image succeeded cleanly on one compute node (`c012`) but
+failed the same import on another (`c094`) — a node-dependent inconsistency,
+not a code bug. Root cause: every task read `pylibs` (a `pip install --target`
+"fat" environment, ~26k files) live off Lustre. Lustre punishes many-small-file
+random access (~1MB/s effective here, vs. ~10-15MB/s for large sequential
+reads) — CPython's import machinery does several `stat()`/`open()` calls per
+module across `anndata`/`scanpy`/`decoupler`/`scvi-tools`/`torch`/..., which
+alone turned a plain `import decoupler` chain into a **12-20 minute** wait,
+and left it vulnerable to exactly this kind of node/timing-dependent
+half-read/cache inconsistency.
+
+**Fix**: `scripts/nextflow_helpers/labels_hpc.config` now stages `pylibs` +
+`ReconEval/src` onto each task's compute node via a `beforeScript`
+(`reconStageScript`) instead of reading them off Lustre directly:
+
+1. `scripts/nextflow_helpers/build_stage_tar.sh` packs both into a single
+   `stage.tar` on Lustre (run once, or after any dependency change).
+2. Each task's `beforeScript` extracts that one file onto the node's local
+   `/localscratch` disk (confirmed present on both the `main` and `gpu`
+   partitions) before Python runs, keyed by `SLURM_JOB_ID` (not `$TMPDIR` —
+   the sbatch launcher exports its own Lustre-path `TMPDIR` for nextflow's/
+   apptainer's own scratch use, and that risks inheriting into per-task jobs).
+3. `PYTHONPATH` points at the staged local copy instead of the Lustre one.
+4. `apptainer.runOptions` (`APPTAINER_BIND_OPTS`) must include
+   `--bind /localscratch`, or the container simply can't see the staged
+   files — `autoMounts` only covers `/tmp`/`$HOME`/`$PWD`, not this.
+
+Measured end-to-end (real `apptainer exec`, not a shortcut): extracting
+2.3GB/29k files onto local disk took **3.9s**; the full
+`anndata`/`scanpy`/`decoupler`/`omnipath` import chain from there took
+**~7.6s** total. A full pipeline run (`ground_truth`, `negative_control`,
+`pca_l10` on synthetic data) then completed end-to-end with every
+method/control task finishing in 6-15s (staging + imports + compute +
+write), `nextflow exit code: 0`. Staged copies are left on `/localscratch`
+after each task (no `afterScript` cleanup) — with ~166GB free per node and
+~2.3GB per copy this isn't urgent, but repeated runs on the same node do
+accumulate.
 
 ## How this maps onto the OpenProblems v2 component API
 
