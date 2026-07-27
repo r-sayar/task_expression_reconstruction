@@ -14,6 +14,8 @@ par = {
     "input_prediction": "resources_test/reconeval_demo/prediction_perturbed.h5ad",
     "input_solution_perturbed": "resources_test/reconeval_demo/solution_perturbed.h5ad",
     "input_solution_control": "resources_test/reconeval_demo/solution_control.h5ad",
+    "reference_condition_column": None,
+    "reference_condition_value": None,
     "output": "output.h5ad",
     "prediction_layer": "X",
     "solution_layer": "X",
@@ -40,19 +42,56 @@ pert_path = par.get("input_solution_perturbed")
 ctrl_path = par.get("input_solution_control")
 have_pools = bool(pert_path) and bool(ctrl_path)
 
+perturbed = control = None
+if have_pools:
+    perturbed = read_expression(ad.read_h5ad(pert_path), par["solution_layer"])
+    control = read_expression(ad.read_h5ad(ctrl_path), par["solution_layer"])
+elif par.get("reference_condition_column") and par.get("reference_condition_value"):
+    # No separate pool files supplied -- derive perturbed/control pools from
+    # a column already present on the solution itself (e.g. LuCA's real
+    # `disease` column). Inert for datasets without this column (the tiny
+    # CI/synthetic fixtures).
+    col = par["reference_condition_column"]
+    val = par["reference_condition_value"]
+    solution = read_expression(
+        ad.read_h5ad(par["input_solution"]), par["solution_layer"]
+    )
+    if col in solution.obs.columns:
+        ctrl_mask = (solution.obs[col] == val).to_numpy()
+        pert_mask = ~ctrl_mask
+        n_ctrl, n_pert = int(ctrl_mask.sum()), int(pert_mask.sum())
+        if n_ctrl >= 5 and n_pert >= 5:
+            control = solution[ctrl_mask].copy()
+            perturbed = solution[pert_mask].copy()
+            have_pools = True
+            print(
+                f"Derived knn_purity pools from {col}=={val!r}: "
+                f"{n_ctrl} control cells, {n_pert} perturbed cells",
+                flush=True,
+            )
+        else:
+            print(
+                f"Reference condition {col}=={val!r} split too small "
+                f"(control={n_ctrl}, perturbed={n_pert}); emitting knn_purity=NA.",
+                flush=True,
+            )
+    else:
+        print(
+            f"reference_condition_column={col!r} not found in solution.obs; "
+            "emitting knn_purity=NA.",
+            flush=True,
+        )
+
 score = float("nan")
 if not have_pools:
     print(
-        "No perturbed/control pools provided (observational dataset); "
+        "No perturbed/control pools available (observational dataset); "
         "emitting knn_purity=NA.",
         flush=True,
     )
 else:
     try:
         from sc_reconstruction.metrics import metric_knn_purity
-
-        perturbed = read_expression(ad.read_h5ad(pert_path), par["solution_layer"])
-        control = read_expression(ad.read_h5ad(ctrl_path), par["solution_layer"])
 
         use_rep = par.get("use_rep") or None
         if use_rep in ("", "null", "None"):

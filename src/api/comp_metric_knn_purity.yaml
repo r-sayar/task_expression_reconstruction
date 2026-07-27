@@ -42,6 +42,23 @@ arguments:
     description: |
       Ground-truth control cells (negative pool). Optional; when absent the
       metric emits NA.
+  - name: "--reference_condition_column"
+    type: string
+    direction: input
+    required: false
+    description: |
+      Optional fallback when --input_solution_perturbed/--input_solution_control
+      are not supplied: an .obs column on --input_solution (e.g. LuCA's real
+      `disease`) used to derive perturbed/control pools by splitting on
+      whether this column equals --reference_condition_value. Ignored if
+      --input_solution_perturbed/--input_solution_control are set.
+  - name: "--reference_condition_value"
+    type: string
+    direction: input
+    required: false
+    description: |
+      The value in --reference_condition_column identifying the control
+      pool (e.g. `normal`); all other rows become the perturbed pool.
   - name: "--output"
     __merge__: file_score.yaml
     direction: output
