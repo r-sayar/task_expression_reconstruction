@@ -90,8 +90,15 @@ workflow run_wf {
       // rather than a per-dataset argument, so it never lands on `state`
       // automatically -- thread it through explicitly here so the
       // method_check filter below (which reads state.method_ids) actually
-      // sees it instead of always treating it as unset.
-      [id, state + ["_meta": [join_id: id]] + (params.method_ids ? [method_ids: params.method_ids] : [:])]
+      // sees it instead of always treating it as unset. Same story for the
+      // metrics-stage passthroughs below (reference_condition_column/value,
+      // cytokine_signatures): declared on the workflow, but need explicit
+      // threading to reach the metrics runEach's fromState map further down.
+      [id, state + ["_meta": [join_id: id]]
+         + (params.method_ids ? [method_ids: params.method_ids] : [:])
+         + (params.reference_condition_column ? [reference_condition_column: params.reference_condition_column] : [:])
+         + (params.reference_condition_value ? [reference_condition_value: params.reference_condition_value] : [:])
+         + (params.cytokine_signatures ? [cytokine_signatures: params.cytokine_signatures] : [:])]
     }
     | extract_uns_metadata.run(
       fromState: [input: "input_solution"],
@@ -211,15 +218,30 @@ workflow run_wf {
       components: metrics,
       id: { id, state, comp -> id + "." + comp.config.name },
       // All three metrics take the standard (solution, prediction) pair.
-      // statistical scores directly; biological computes the sub-metrics whose
-      // inputs are present (cellcycle/coexpression/pathway) and reports the
-      // rest (DEG/cytokine) as NA; knn_purity has no perturbation pools here so
-      // it reports NA. The extra optional inputs (references, perturbation
-      // pools, cytokine signatures) are deliberately not passed.
-      fromState: [
-        input_solution: "input_solution",
-        input_prediction: "method_output",
-      ],
+      // statistical scores directly; biological/knn_purity additionally
+      // accept reference_condition_column/value (both) and cytokine_signatures
+      // (biological only) when set (see main.nf's dataset_ch map above, and
+      // each component's own config.vsh.yaml) to derive a reference/control
+      // condition or enable the cytokine sub-metric. A closure (rather than a
+      // plain map) so statistical -- which declares neither arg -- is never
+      // called with an argument it doesn't recognize. Absent (null) values
+      // fall through to each component's existing NA-degradation behavior,
+      // so this is a no-op for datasets without a usable reference condition
+      // (e.g. the CI/synthetic fixtures).
+      fromState: { id, state, comp ->
+        def args = [
+          input_solution: state.input_solution,
+          input_prediction: state.method_output,
+        ]
+        if (comp.config.name in ["biological", "knn_purity"]) {
+          args.reference_condition_column = state.reference_condition_column
+          args.reference_condition_value = state.reference_condition_value
+        }
+        if (comp.config.name == "biological") {
+          args.cytokine_signatures = state.cytokine_signatures
+        }
+        args
+      },
       toState: { id, output, state, comp ->
         state + [
           metric_id: comp.config.name,
