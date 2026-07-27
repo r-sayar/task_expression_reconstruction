@@ -85,7 +85,13 @@ workflow run_wf {
    ****************************/
   dataset_ch = input_ch
     | map { id, state ->
-      [id, state + ["_meta": [join_id: id]]]
+      // --method_ids is declared on the workflow (see config.vsh.yaml) but,
+      // unlike input_train/input_test/..., is a workflow-level restriction
+      // rather than a per-dataset argument, so it never lands on `state`
+      // automatically -- thread it through explicitly here so the
+      // method_check filter below (which reads state.method_ids) actually
+      // sees it instead of always treating it as unset.
+      [id, state + ["_meta": [join_id: id]] + (params.method_ids ? [method_ids: params.method_ids] : [:])]
     }
     | extract_uns_metadata.run(
       fromState: [input: "input_solution"],
