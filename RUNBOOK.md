@@ -261,13 +261,34 @@ execution reached the actual gene-overlap check — the tiny synthetic test
 dataset (80 genes total) just doesn't overlap enough with any real PROGENy
 pathway's gene set. Expect real `pathway` values on the full LuCA dataset.
 
-**New issue found, not yet fixed**: `coexpression` failed with
+**`coexpression` — found and fixed**: it failed with
 `[Errno 30] Read-only file system: '/home/sayar99'` — `omnipath`'s MSigDB
-fetch (used by `metric_coexpression`) tries to write a cache file under
-the user's home directory, which is mounted read-only on Curta compute
-nodes. Needs an explicit cache/config dir override (e.g.
-`OMNIPATH_CACHE_DIR` or similar pointed at `/localscratch` or `/scratch`)
-before `coexpression` can compute a real value on this cluster.
+fetch (used by `metric_coexpression`) resolves its cache/config paths off
+`HOME` (`~/.cache/omnipathdb`, `~/.config/omnipathdb.ini`) with no override
+via env vars (`XDG_CACHE_HOME`/`XDG_CONFIG_HOME` confirmed not consulted),
+and Curta's home directory is read-only on at least some compute nodes
+(node-dependent). `apptainer exec --env HOME=...` is blocked outright by
+apptainer itself; `apptainer exec --home <dir>` (a distinct, supported flag)
+is not, and does correctly redirect `HOME`/`Path.home()`/omnipath's resolved
+cache path (confirmed via a real `Annotations.get(resources='MSigDB')`
+fetch). `reconStageScript`'s `beforeScript` now creates a per-task-unique
+fake-home directory under `/localscratch` (avoiding write races between
+concurrent tasks) and `containerOptions` passes it via `--home`. Confirmed
+on a real run: `coexpression` now produces real values for every method
+(`ground_truth`: 1.0, `pca_l10`: 0.85, `negative_control`: 0.91).
+
+**Still open, and not a bug** — `knn_purity`, `deg_dice_at_100`,
+`deg_logfc_spearman`, and `cytokine` remain `NaN` on both the synthetic
+test data and LuCA, but for a structural reason rather than a code defect:
+they require a *perturbational* reference condition (a
+treated-vs-control pairing for DEG/knn_purity) or an external cytokine
+gene-signature CSV (`analysis/data/frozen/cytokine_act_merged.csv` in
+`sc_reconstruction`'s docstrings — this file does not actually exist
+anywhere in the local `ReconEval` checkout; it would need to be sourced
+from the Immune Dictionary, :cite:`cui:24`) that this observational
+LuCA-shaped dataset simply doesn't have. Fixing these would mean adding a
+genuinely different dataset and/or sourcing external reference data, not
+a code change to this pipeline.
 
 ## How this maps onto the OpenProblems v2 component API
 
