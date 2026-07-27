@@ -95,11 +95,21 @@ def main() -> None:
 
     print(">> Predict normalized expression on test", flush=True)
     scvi.model.SCVI.setup_anndata(test_adata, layer=counts_layer)
+    # library_size="latent" returns each cell's expected counts scaled by the
+    # model's own inferred per-cell library size -- a linear, counts-like
+    # scale. The rest of the pipeline (solution + every other method's
+    # prediction) is log1p_cp10k. Comparing scVI's raw linear-scale output
+    # directly against a log1p-scale solution in the statistical metric
+    # (r2/mse/energy_distance) would unfairly penalize scVI on a scale
+    # mismatch rather than actual reconstruction quality. Use a fixed
+    # library_size=1e4 (matching cp10k) and log1p the result to genuinely
+    # match the normalization_id this output claims to carry.
     X_pred = model.get_normalized_expression(
         adata=test_adata,
         return_numpy=True,
-        library_size="latent",
+        library_size=1e4,
     )
+    X_pred = np.log1p(X_pred)
 
     print(">> Write prediction", flush=True)
     output = ad.AnnData(
