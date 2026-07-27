@@ -1,9 +1,22 @@
 import math
+import socket
 import sys
 from pathlib import Path
 
 import anndata as ad
 import numpy as np
+
+# The pathway/coexpression sub-metrics auto-fetch PROGENy (decoupler) and
+# MSigDB Hallmark (omnipath) gene sets over HTTP when not passed explicitly,
+# and ReconEval's compute_biological_metrics already wraps each fetch in a
+# try/except that degrades to NA on failure -- but that only helps for a
+# call that actually *raises*. Neither client sets a request timeout by
+# default, so a slow or degraded network leaves the call blocking
+# indefinitely instead of failing fast. Set a generous-but-bounded global
+# socket timeout (most HTTP clients, including the ones these libraries use,
+# respect it when no explicit per-call timeout is set) so a genuinely stuck
+# connection becomes a caught, graceful NA instead of an unbounded hang.
+socket.setdefaulttimeout(120)
 
 _parents = Path(__file__).resolve().parents
 _repo_src = _parents[4] / "src" if len(_parents) > 4 else None
