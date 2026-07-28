@@ -29,6 +29,20 @@ print(">> Load data", flush=True)
 adata = ad.read_h5ad(par["input"])
 print("input:", adata, flush=True)
 
+# Real datasets fetched from CELLxGENE Census carry var_names set to Census's
+# internal numeric soma_joinid, with actual gene symbols in a separate
+# var["feature_name"] column -- downstream, every gene-symbol-based biological
+# sub-metric (cell cycle, PROGENy pathway, MSigDB coexpression, cytokine
+# signatures) needs real symbols in var_names to match against, and silently
+# degrades to NA otherwise (confirmed: zero overlap between a real dataset's
+# numeric var_names and any curated gene-symbol list). Re-key onto symbols
+# when available; synthetic/CI fixtures have no feature_name column and are
+# unaffected. var_names_make_unique() handles symbols shared by >1 Ensembl id.
+if "feature_name" in adata.var.columns:
+    print(">> Re-keying var_names onto gene symbols (var['feature_name'])", flush=True)
+    adata.var_names = adata.var["feature_name"].astype(str)
+    adata.var_names_make_unique()
+
 dataset_id = adata.uns.get("dataset_id", "unknown")
 normalization_id = adata.uns.get("normalization_id", "log_cp10k")
 
