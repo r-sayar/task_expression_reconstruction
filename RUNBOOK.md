@@ -277,18 +277,67 @@ concurrent tasks) and `containerOptions` passes it via `--home`. Confirmed
 on a real run: `coexpression` now produces real values for every method
 (`ground_truth`: 1.0, `pca_l10`: 0.85, `negative_control`: 0.91).
 
-**Still open, and not a bug** — `knn_purity`, `deg_dice_at_100`,
-`deg_logfc_spearman`, and `cytokine` remain `NaN` on both the synthetic
-test data and LuCA, but for a structural reason rather than a code defect:
-they require a *perturbational* reference condition (a
-treated-vs-control pairing for DEG/knn_purity) or an external cytokine
-gene-signature CSV (`analysis/data/frozen/cytokine_act_merged.csv` in
-`sc_reconstruction`'s docstrings — this file does not actually exist
-anywhere in the local `ReconEval` checkout; it would need to be sourced
-from the Immune Dictionary, :cite:`cui:24`) that this observational
-LuCA-shaped dataset simply doesn't have. Fixing these would mean adding a
-genuinely different dataset and/or sourcing external reference data, not
-a code change to this pipeline.
+**`knn_purity`/DEG metrics (`deg_dice_at_100`, `deg_logfc_spearman`) — fixed.**
+Both need a perturbational reference/control condition that real LuCA
+doesn't ship as separate files. It does carry a real `disease` column
+(`normal` alongside several cancer subtypes) all the way through to
+`prediction.h5ad` (methods already copy `.obs` forward), so `biological`
+and `knn_purity` gained `--reference_condition_column`/
+`--reference_condition_value` args: when the existing (separate-file)
+reference/pool arguments aren't supplied, both derive the same split by
+subsetting `input_solution`/`input_prediction` on this column instead.
+Wired through `run_benchmark`'s workflow (`--reference_condition_column`/
+`--reference_condition_value`, plus `--cytokine_signatures` — see below)
+as new top-level passthrough args; `main.nf`'s metrics `runEach` had been
+using a **static** `fromState` map carrying only `input_solution`/
+`input_prediction`, with a comment noting the extras were "deliberately
+not passed" — that, not data availability, was the actual reason these
+sub-metrics always returned `NA`. Now a closure, so `statistical` (which
+declares neither arg) never receives one it doesn't recognize. Confirmed
+on `luca_split02` (real data): `deg_dice_at_100`/`deg_logfc_spearman` and
+`knn_purity` all produce real values for every method.
+
+**`cytokine` — fixed.** Needs an Immune Dictionary gene-signature CSV
+(Cui et al. 2024, Nature 625:377-384) that doesn't exist in the local
+`ReconEval` checkout, but does exist, already at the exact expected
+filename, in the paper's own `huggingface.co/datasets/theislab/ReconEval`
+repo. Bundled as `src/metrics/biological/resources/cytokine_act_merged.csv`
+— an opt-in `--cytokine_signatures` arg default (unlike `--cell_cycle_genes`,
+not defaulted: it's 6.5MB and would otherwise load on every run including
+tiny CI/synthetic fixtures where it can never match). Its gene symbols are
+mouse (the Immune Dictionary's source atlas is mouse lymph node);
+`metric_cytokine` already upper-cases before matching, which recovers
+shared-name mouse/human orthologs. Confirmed on real LuCA: produces real
+values for every method once the `var_names` fix below was also in place.
+
+**The actual root cause of `cellcycle_proportion_same_phase`/
+`coexpression`/`pathway`/`cytokine` all being `NaN` on real data — found
+and fixed, independent of the two fixes above.** `var_names` on the real
+LuCA data (fetched from CELLxGENE Census) turned out to be Census's
+internal numeric `soma_joinid` (e.g. `'4'`, `'5'`, `'8'`...), not gene
+symbols — real symbols were sitting unused in `var['feature_name']` the
+whole time. Every one of these sub-metrics matches its input against a
+curated external gene-symbol list (cell cycle genes, PROGENy targets,
+MSigDB Hallmark, the cytokine signatures above); zero real symbols means
+zero overlap regardless of how many genes are in the panel or how the
+panel was selected. `process_dataset/script.py`'s
+`sc.pp.highly_variable_genes(..., subset=True)` only subsets rows — it
+never touches `var_names` — so this was upstream of HVG selection and
+would affect any future Census-sourced dataset, not just this one.
+Fixed by re-keying `var_names` onto `var['feature_name']` (when present;
+synthetic/CI fixtures have no such column and are unaffected) right
+after loading, plus `var_names_make_unique()` for symbols shared by more
+than one Ensembl id. The existing `split02` data files were patched in
+place (backed up first) rather than re-fetching 9.4GB from Census.
+
+With all three fixes together, a real `luca_split02` run produced real
+values for **every** biological sub-metric and method, with a single
+correct (not a bug) exception: `pathway` is `NaN` for `negative_control`
+specifically, because Pearson/Spearman correlation is mathematically
+undefined for a constant input (`ConstantInputWarning`) — `negative_control`
+predicts the same training-mean value for every cell, so its per-pathway
+scores have zero variance. `ground_truth` (self-comparison) and `pca_l10`
+both score all six sub-metrics with real, sensible values.
 
 ## How this maps onto the OpenProblems v2 component API
 
