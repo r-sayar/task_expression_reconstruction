@@ -39,9 +39,6 @@ export NXF_QUEUE_SIZE="${NXF_QUEUE_SIZE:-6}"
 
 echo "viash ns build (target generation only -- no --setup, no docker)"
 viash ns build 2>&1 | tail -5
-# nextflow's own config parser chokes on the comma in this generated
-# directive; the underlying resource request is unaffected.
-find target -name nextflow.config -exec sed -i 's/accelerator = 1, type =/accelerator = 1; type =/g' {} +
 
 RUN_ID="hpc_smoke_$(date +%Y-%m-%d_%H-%M-%S)"
 publish_dir="$RECON_ROOT/results/${RUN_ID}"
