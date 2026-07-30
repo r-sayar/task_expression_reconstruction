@@ -339,6 +339,63 @@ predicts the same training-mean value for every cell, so its per-pathway
 scores have zero variance. `ground_truth` (self-comparison) and `pca_l10`
 both score all six sub-metrics with real, sensible values.
 
+## 9. GPU methods (autoencoder, scVI): two real bugs found only under real training
+
+Every earlier GPU-labelled smoke test in this repo's history used
+`epoch_cap=1` — enough to prove the pipeline *completes*, but not enough to
+reveal whether it actually ran on the GPU, since one epoch's wall-clock
+difference between CPU and GPU is invisible at that scale. Both bugs below
+only surfaced once a genuine full-length (400-epoch, no `epoch_cap`) training
+run was attempted on real LuCA data — completion had been silently mistaken
+for correctness up to that point.
+
+**Invalid Nextflow directive syntax in the `gpu` label's config template.**
+`_viash.yaml`'s `config_mods` templates every GPU-labelled component's
+generated `withLabel: gpu { ... }` block as a single string:
+`"accelerator = 1, type = 'nvidia.com/gpu'"`. A comma is not a valid
+statement separator inside a Nextflow directive block (semicolon or newline
+is required) — every `target/nextflow/*/nextflow.config` this project ever
+generated for a GPU component carried this syntactically invalid line. It
+was worked around all session (and in every ad hoc test launcher script) by
+hand-patching the built `target/` directory with a `sed` one-liner after
+every build, rather than fixed at the source — meaning `viash ns build` run
+the way OpenProblems' own CI (`Build` workflow) runs it, with no such patch,
+would have shipped this broken syntax in any real deploy. Fixed the template
+itself (comma → semicolon); confirmed a fresh, unpatched `viash ns build`
+now produces valid syntax directly, and removed the `sed` workaround from
+every launcher script that had it.
+
+**`--nv` never actually reached the container, so GPU methods silently
+trained on CPU.** A real 400-epoch training run of `ae_l10`/`scvi_l10` on
+real LuCA ran for 4+ hours with zero errors before this was caught —
+confirmed via `torch.cuda.is_available()`/`GPU available: False` in the
+task logs — despite the SLURM job correctly landing on a GPU node with a
+GPU reserved (`clusterOptions`' `--gres=gpu:1`, set in the same
+`withLabel: gpu` block, worked fine). Root cause: that same block's
+`containerOptions` (meant to add `--nv`, the apptainer flag that exposes the
+GPU inside the container) silently lost to a *different* selector
+(`withName: '.*runEachWf.*'`, which does not set `--nv`) — verified directly
+via the real job's generated `.command.run`, which showed the earlier
+block's `containerOptions` had won even though `withLabel: gpu` appears
+later in the file. A prior comment in `labels_hpc.config` claimed Nextflow
+resolves this by "matching selectors in file order, later ones winning" —
+that claim was wrong, at least for `containerOptions` specifically (the
+*same* block's `clusterOptions`, which the other selector doesn't set at
+all, did apply correctly — so this isn't a blanket "later selector ignored"
+problem, just whichever selector wins when two both define the same
+directive). Root cause of that precedence quirk was not further isolated.
+Rather than continue chasing Nextflow's precedence semantics, the fix
+sidesteps the conflict entirely: `--nv` is now appended unconditionally to
+the **global** `apptainer.runOptions` (confirmed harmless via
+`apptainer exec --nv ...` succeeding fine on non-GPU nodes with no GPU
+present), independent of which selector's `containerOptions` wins.
+
+**Confirmed working** on the real production run: `ae_l10`'s task log shows
+`device=cuda` (previously `device=cpu`), reaching 20 training epochs in
+about 13.5 minutes (~40s/epoch) versus the earlier CPU run's measured
+~367s/epoch for the comparable `scvi_l10` model — roughly a 9x speedup,
+consistent with genuine GPU execution rather than a fluke.
+
 ## How this maps onto the OpenProblems v2 component API
 
 | OpenProblems concept | This task's realization |
