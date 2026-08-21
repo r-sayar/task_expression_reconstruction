@@ -118,6 +118,20 @@ resources:
     path: script.py
   - type: file
     path: reconnlscvi_module.py
+test_resources:
+  # Re-declares the parent (comp_method.yaml) test_resources verbatim, since
+  # a component-level test_resources key replaces (not merges with) the
+  # inherited one -- then appends test_nlscvi.py, an additional test that
+  # exercises the nlscvi variant specifically (the default test above only
+  # covers variant=scvi, the argument default).
+  - type: python_script
+    path: /common/component_tests/run_and_check_output.py
+  - type: python_script
+    path: /common/component_tests/check_config.py
+  - path: /resources_test/reconeval/luca
+    dest: resources_test/reconeval/luca
+  - type: python_script
+    path: test_nlscvi.py
 engines:
   - type: docker
     image: openproblems/base_python:1
