@@ -124,6 +124,18 @@ def _run_nlscvi(par, train_adata, test_adata):
     See RECONEVAL_METRICS_COMPARISON.md in the reconeval repo for the full
     investigation.
     """
+    # viash's executable/docker runners copy script.py's contents into a
+    # temp file at run time (e.g. /tmp/viash-run-scvi-XXXXX.py), so
+    # Path(__file__).resolve().parent (used by the local-dev sys.path setup
+    # above) does NOT point at the bundled reconnlscvi_module.py resource --
+    # it points at that temp file's directory instead. meta["resources_dir"]
+    # is viash's actual mechanism for locating bundled sibling resources at
+    # run time; fall back to it here (confirmed necessary via a real CI
+    # failure: ModuleNotFoundError: No module named 'reconnlscvi_module').
+    resources_dir = meta.get("resources_dir") if isinstance(meta, dict) else None
+    if resources_dir and resources_dir not in sys.path:
+        sys.path.insert(0, resources_dir)
+
     from reconnlscvi_module import NormalVAE
     from scvi.module._constants import MODULE_KEYS
 
