@@ -8,17 +8,37 @@ info:
   label: scVI
   summary: scvi-tools SCVI reconstruction (scVI / mlscVI / nlscVI).
   description: |
-    Trains an ``scvi-tools`` SCVI model on the training AnnData and returns
-    denoised (posterior mean) expression for the test cells via
-    ``get_normalized_expression``. Expects raw counts in ``.X`` (i.e. the
-    dataset was processed with ``preferred_normalization: counts``).
+    Trains an ``scvi-tools``-based model on the training AnnData and returns
+    denoised expression for the test cells.
 
     The `variant` argument selects the model, matching the ReconEval VAE
     family:
 
-      * `scvi`   -> scVI   (ZINB likelihood, observed library size)
-      * `mlscvi` -> mlscVI (ZINB likelihood, modeled library size)
-      * `nlscvi` -> nlscVI (Normal/Gaussian likelihood, modeled library size)
+      * `scvi`   -> scVI   (ZINB likelihood, observed library size). Reads
+        raw counts (the ``counts`` layer), predicts via vanilla scvi-tools'
+        ``get_normalized_expression(library_size=1e4)`` + log1p.
+      * `mlscvi` -> mlscVI (ZINB likelihood, modeled library size). Same data
+        source and prediction path as `scvi`.
+      * `nlscvi` -> nlscVI ("VAE-None" -- no library size at all). **Not**
+        vanilla ``scvi.model.SCVI``: this is a verbatim port of the paper's
+        own custom module (``theislab/reconstruction``'s
+        ``sc_reconstruction.models.reconnlscvi.NormalVAE`` /
+        ``NormalDecoderSCVI``, bundled here as ``reconnlscvi_module.py``) --
+        a decoder with no scale activation whose ``forward()`` never reads
+        its library argument at all (library size is architecturally
+        absent, not numerically neutralized). It trains directly on ``.X``
+        (log1p_cp10k, the same matrix the `autoencoder` component uses),
+        not the counts layer, and predicts via deterministic decoding
+        (posterior-mean latent `z` -> `generative()` -> `px.loc`) rather
+        than `get_normalized_expression`. It always trains with early
+        stopping (`elbo_validation`, patience `--early_stopping_patience`),
+        matching the paper's own training procedure -- this is not optional
+        for this variant, since it was empirically required to reproduce
+        the paper's AE > VAE > PCA ranking (see
+        `RECONEVAL_METRICS_COMPARISON.md` in the reconeval repo for the full
+        investigation and validated results: r2=0.93 vs. AE's 0.94, at
+        `n_hidden=1024, n_layers=3, max_kl_weight=0.1` for LuCA
+        `split02`/latent=10).
 arguments:
   - name: "--variant"
     type: string
@@ -26,7 +46,7 @@ arguments:
     choices: [scvi, mlscvi, nlscvi]
     description: |
       scVI variant. `scvi`=standard, `mlscvi`=modeled library,
-      `nlscvi`=Normal-likelihood VAE.
+      `nlscvi`=paper's ported no-library-size NormalVAE.
   - name: "--n_latent"
     type: integer
     default: 10
@@ -45,7 +65,7 @@ arguments:
     choices: [zinb, nb, poisson, normal]
     description: |
       Optional explicit gene likelihood override. When unset, the value is
-      derived from `--variant`.
+      derived from `--variant`. Ignored for `nlscvi` (always `normal`).
   - name: "--max_kl_weight"
     type: double
     required: false
@@ -53,6 +73,38 @@ arguments:
     description: |
       Target KL warmup weight (the paper's `max_kl_weight`), passed to the
       scvi-tools training plan.
+  - name: "--min_kl_weight"
+    type: double
+    required: false
+    default: 0.0
+    description: KL warmup start weight. Only used by `nlscvi`.
+  - name: "--n_steps_kl_warmup"
+    type: integer
+    required: false
+    default: 40000
+    description: |
+      Number of training steps to warm up the KL weight from
+      `--min_kl_weight` to `--max_kl_weight`. Only used by `nlscvi`.
+  - name: "--learning_rate"
+    type: double
+    required: false
+    default: 1e-4
+    description: Optimizer learning rate. Only used by `nlscvi`.
+  - name: "--train_size"
+    type: double
+    required: false
+    default: 0.9
+    description: |
+      Fraction of training cells used for training vs. held-out validation
+      (the remainder). Only used by `nlscvi`, whose early stopping needs a
+      validation split.
+  - name: "--early_stopping_patience"
+    type: integer
+    required: false
+    default: 5
+    description: |
+      Epochs of no `elbo_validation` improvement before stopping, matching
+      the paper's own training procedure. Only used by `nlscvi`.
   - name: "--max_epochs"
     type: integer
     default: 100
@@ -64,6 +116,8 @@ arguments:
 resources:
   - type: python_script
     path: script.py
+  - type: file
+    path: reconnlscvi_module.py
 engines:
   - type: docker
     image: openproblems/base_python:1
@@ -75,7 +129,12 @@ engines:
       # exists on the r-sayar/ReconEval fork (not upstream theislab/ReconEval).
       # Install from a sparse shallow clone of that fork placed on sys.path.
       - type: python
-        pip: ["scvi-tools>=1.1"]
+        # Pinned exactly to the version the nlscvi integration (NormalVAE
+        # port, using semi-internal scvi-tools APIs: MODULE_KEYS,
+        # _get_generative_input, _validate_anndata, _make_data_loader) was
+        # developed and validated against on real LuCA data. A looser bound
+        # risks those internals drifting between scvi-tools releases.
+        pip: ["scvi-tools==1.3.3"]
       - type: docker
         run:
           - git clone --depth 1 --filter=blob:none --sparse https://github.com/r-sayar/ReconEval.git /opt/ReconEval && git -C /opt/ReconEval sparse-checkout set src && printf '%s\n' /opt/ReconEval/src > "$(python -c 'import site; print(site.getsitepackages()[0])')/reconeval.pth"
