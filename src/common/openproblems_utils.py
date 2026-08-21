@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pandas as pd
 from anndata import AnnData
 
 
@@ -15,10 +16,19 @@ def read_expression(adata: AnnData, layer: str) -> AnnData:
         out.X = adata.layers[layer]
         return out
     if layer in adata.obsm:
+        # An obsm entry (e.g. a latent representation) has its own number of
+        # columns, unrelated to .var (genes) -- reusing adata.var here would
+        # be a shape mismatch (AnnData validates X.shape[1] == len(var)) for
+        # any dimensionality other than n_vars. Build a var frame matching
+        # the actual matrix width, and carry .uns over: write_score reads
+        # prediction.uns["dataset_id"] etc., so dropping it breaks every
+        # caller of this branch.
+        X = np.asarray(adata.obsm[layer])
         out = AnnData(
-            X=np.asarray(adata.obsm[layer]),
+            X=X,
             obs=adata.obs.copy(),
-            var=adata.var.copy(),
+            var=pd.DataFrame(index=[f"{layer}_{i}" for i in range(X.shape[1])]),
+            uns=dict(adata.uns),
         )
         return out
     raise KeyError(

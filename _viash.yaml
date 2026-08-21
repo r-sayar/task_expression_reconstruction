@@ -10,6 +10,7 @@ links:
   issue_tracker: https://github.com/openproblems-bio/task_expression_reconstruction/issues
   repository: https://github.com/openproblems-bio/task_expression_reconstruction
   docker_registry: ghcr.io
+  documentation: https://github.com/openproblems-bio/task_expression_reconstruction/blob/main/README.md
 
 label: Gene expression reconstruction
 summary: Benchmark metrics and methods for reconstructing gene expression from single-cell latent representations.
@@ -33,14 +34,17 @@ references:
 
 info:
   image: thumbnail.svg
+  # NOTE: the reconeval/luca fixtures are intentionally NOT listed here.
+  # This list feeds the CI "sync-and-cache" step, which only understands s3/gs
+  # remote types; a type-less local `path:` entry makes it exit 1 before any
+  # component test runs (no S3 bucket write access exists to host them there).
+  # The LuCA fixtures are instead committed directly under
+  # resources_test/{common,reconeval}/luca/ (see scripts/create_resources/
+  # test_resources.sh) so viash finds them locally with nothing to fetch.
   test_resources:
     - type: s3
       path: s3://openproblems-data/resources_test/common/
       dest: resources_test/common
-    - path: /resources_test/reconeval/luca
-      dest: resources_test/reconeval/luca
-    - path: /resources_test/common/luca
-      dest: resources_test/common/luca
 
 authors:
   - name: Xiaotong Fu
@@ -53,7 +57,7 @@ authors:
       github: theislab
 
 config_mods: |
-  .runners[.type == "nextflow"].config.labels := { lowmem : "memory = 20.Gb", midmem : "memory = 50.Gb", highmem : "memory = 100.Gb", veryhighmem : "memory = 200.Gb", lowcpu : "cpus = 5", midcpu : "cpus = 15", highcpu : "cpus = 30", lowtime : "time = 1.h", midtime : "time = 4.h", hightime : "time = 8.h", veryhightime : "time = 24.h", gpu : "accelerator = 1, type = 'nvidia.com/gpu'" }
+  .runners[.type == "nextflow"].config.labels := { lowmem : "memory = 20.Gb", midmem : "memory = 50.Gb", highmem : "memory = 100.Gb", veryhighmem : "memory = 200.Gb", lowcpu : "cpus = 5", midcpu : "cpus = 15", highcpu : "cpus = 30", lowtime : "time = 1.h", midtime : "time = 4.h", hightime : "time = 8.h", veryhightime : "time = 24.h", gpu : "accelerator = 1; type = 'nvidia.com/gpu'" }
 
 repositories:
   - name: openproblems

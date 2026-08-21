@@ -139,8 +139,17 @@ arguments:
     direction: input
     required: false
     description: |
-      Optional Immune Dictionary cytokine signature CSV. When omitted, the
-      cytokine metric is skipped.
+      Optional Immune Dictionary cytokine signature CSV (Cui et al. 2024,
+      Nature 625:377-384) -- bundled at resources/cytokine_act_merged.csv but
+      NOT set as a default (unlike --cell_cycle_genes), since it's a 6.5MB
+      file that would otherwise load on every run including tiny CI/synthetic
+      fixture tests where it can never match anything. Pass it explicitly for
+      real-dataset runs. Note: this signature data uses mouse gene symbols
+      (the Immune Dictionary's source atlas is mouse lymph node); matching
+      against a human dataset relies on shared mouse/human ortholog naming
+      convention after case-folding (metric_cytokine already upper-cases gene
+      symbols), which recovers many but not all orthologs -- not a full
+      ortholog remapping. When omitted, the cytokine metric is skipped.
   - name: "--input_reference_solution"
     __merge__: ../../api/file_solution.yaml
     direction: input
@@ -161,6 +170,23 @@ arguments:
     direction: input
     default: X
     description: Layer for the reference prediction AnnData.
+  - name: "--reference_condition_column"
+    type: string
+    direction: input
+    required: false
+    description: |
+      Optional fallback when --input_reference_solution/--input_reference_prediction
+      are not supplied: an .obs column on the main solution/prediction (e.g.
+      LuCA's real `disease`) used to derive a reference/control condition by
+      subsetting rows where this column equals --reference_condition_value.
+      Ignored if --input_reference_solution/--input_reference_prediction are set.
+  - name: "--reference_condition_value"
+    type: string
+    direction: input
+    required: false
+    description: |
+      The value in --reference_condition_column identifying the reference/
+      control condition (e.g. `normal`).
   - name: "--min_cells"
     type: integer
     direction: input
@@ -175,6 +201,9 @@ resources:
   - type: file
     path: resources/regev_lab_cell_cycle_genes.txt
     dest: resources/regev_lab_cell_cycle_genes.txt
+  - type: file
+    path: resources/cytokine_act_merged.csv
+    dest: resources/cytokine_act_merged.csv
 
 engines:
   - type: docker

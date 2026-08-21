@@ -1,4 +1,6 @@
 namespace: "data_processors"
+links:
+  documentation: https://reconeval.readthedocs.io
 info:
   type: data_processor
   type_info:

@@ -1,4 +1,6 @@
 namespace: "metrics"
+links:
+  documentation: https://reconeval.readthedocs.io
 info:
   type: metric
   type_info:

@@ -29,8 +29,22 @@ print(">> Load data", flush=True)
 adata = ad.read_h5ad(par["input"])
 print("input:", adata, flush=True)
 
+# Real datasets fetched from CELLxGENE Census carry var_names set to Census's
+# internal numeric soma_joinid, with actual gene symbols in a separate
+# var["feature_name"] column -- downstream, every gene-symbol-based biological
+# sub-metric (cell cycle, PROGENy pathway, MSigDB coexpression, cytokine
+# signatures) needs real symbols in var_names to match against, and silently
+# degrades to NA otherwise (confirmed: zero overlap between a real dataset's
+# numeric var_names and any curated gene-symbol list). Re-key onto symbols
+# when available; synthetic/CI fixtures have no feature_name column and are
+# unaffected. var_names_make_unique() handles symbols shared by >1 Ensembl id.
+if "feature_name" in adata.var.columns:
+    print(">> Re-keying var_names onto gene symbols (var['feature_name'])", flush=True)
+    adata.var_names = adata.var["feature_name"].astype(str)
+    adata.var_names_make_unique()
+
 dataset_id = adata.uns.get("dataset_id", "unknown")
-normalization_id = adata.uns.get("normalization_id", "log1p_cp10k")
+normalization_id = adata.uns.get("normalization_id", "log_cp10k")
 
 # Ensure a raw-counts layer exists: count-based methods (scVI family) read it,
 # and seurat_v3 HVG selection must run on raw counts, not log-normalized data.
@@ -48,11 +62,11 @@ else:
     sc.pp.highly_variable_genes(adata, n_top_genes=n_top, flavor="seurat", subset=True)
 
 if normalization_id == "counts":
-    print(">> Normalize counts -> log1p_cp10k", flush=True)
+    print(">> Normalize counts -> log_cp10k", flush=True)
     adata.X = adata.layers["counts"].copy()
     sc.pp.normalize_total(adata, target_sum=1e4)
     sc.pp.log1p(adata)
-    normalization_id = "log1p_cp10k"
+    normalization_id = "log_cp10k"
 
 print(f">> Split using method={par['method']}", flush=True)
 rng = np.random.default_rng(int(par["seed"]))

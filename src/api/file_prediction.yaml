@@ -1,5 +1,5 @@
 type: file
-example: "resources_test/reconeval_demo/prediction.h5ad"
+example: "resources_test/reconeval/luca/prediction.h5ad"
 label: "Predicted data"
 summary: "Reconstructed gene expression as output by a method."
 info:

@@ -1,4 +1,6 @@
 namespace: "control_methods"
+links:
+  documentation: https://reconeval.readthedocs.io
 info:
   type: control_method
   type_info:

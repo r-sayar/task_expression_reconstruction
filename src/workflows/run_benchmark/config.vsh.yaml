@@ -56,6 +56,31 @@ argument_groups:
           A list of method (base) ids to run, e.g. `ae_l32`, `nlscvi_l512`,
           `pca_l128`, `ground_truth`. If not specified, all methods run across
           the full latent x seed grid.
+  - name: Metrics
+    arguments:
+      - name: "--reference_condition_column"
+        type: string
+        required: false
+        description: |
+          Passed through to the biological and knn_purity metric components:
+          an .obs column on the dataset (e.g. LuCA's real `disease`) used to
+          derive a reference/control condition when no separate reference/
+          perturbation-pool files are supplied. See those components' own
+          argument docs for details. No effect on datasets without this
+          column (e.g. the CI/synthetic fixtures).
+      - name: "--reference_condition_value"
+        type: string
+        required: false
+        description: |
+          The value in --reference_condition_column identifying the
+          reference/control condition (e.g. `normal`).
+      - name: "--cytokine_signatures"
+        type: file
+        required: false
+        description: |
+          Passed through to the biological metric component's own
+          --cytokine_signatures arg (an Immune Dictionary cytokine
+          signature CSV). See that component's argument docs for details.
 
 resources:
   - type: nextflow_script

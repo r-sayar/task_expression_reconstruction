@@ -1,12 +1,26 @@
 import math
+import socket
 import sys
 from pathlib import Path
 
 import anndata as ad
 import numpy as np
 
-_repo_src = Path(__file__).resolve().parents[4] / "src"
-if _repo_src.is_dir() and str(_repo_src) not in sys.path:
+# The pathway/coexpression sub-metrics auto-fetch PROGENy (decoupler) and
+# MSigDB Hallmark (omnipath) gene sets over HTTP when not passed explicitly,
+# and ReconEval's compute_biological_metrics already wraps each fetch in a
+# try/except that degrades to NA on failure -- but that only helps for a
+# call that actually *raises*. Neither client sets a request timeout by
+# default, so a slow or degraded network leaves the call blocking
+# indefinitely instead of failing fast. Set a generous-but-bounded global
+# socket timeout (most HTTP clients, including the ones these libraries use,
+# respect it when no explicit per-call timeout is set) so a genuinely stuck
+# connection becomes a caught, graceful NA instead of an unbounded hang.
+socket.setdefaulttimeout(120)
+
+_parents = Path(__file__).resolve().parents
+_repo_src = _parents[4] / "src" if len(_parents) > 4 else None
+if _repo_src is not None and _repo_src.is_dir() and str(_repo_src) not in sys.path:
     sys.path.insert(0, str(_repo_src))
 
 from sc_reconstruction.metrics import (  # noqa: E402
@@ -29,6 +43,8 @@ par = {
     "input_reference_prediction": "resources_test/reconeval_demo/reference_prediction.h5ad",
     "reference_solution_layer": "X",
     "reference_prediction_layer": "X",
+    "reference_condition_column": None,
+    "reference_condition_value": None,
     "min_cells": 5,
 }
 meta = {"name": "biological"}
@@ -66,6 +82,38 @@ if par.get("input_reference_solution") and par.get("input_reference_prediction")
         ref_solution, ref_prediction, resolve_genes=par["resolve_genes"]
     )
     deg_refs = (ref_solution, ref_prediction)
+elif par.get("reference_condition_column") and par.get("reference_condition_value"):
+    # No separate reference files supplied -- derive a reference/control
+    # condition from a column already present on this dataset's own solution
+    # (e.g. LuCA's real `disease` column has a `normal` category alongside
+    # several cancer subtypes; the tiny CI/synthetic fixtures have no such
+    # column, so this stays inert for them). solution/prediction are already
+    # gene-aligned above, so subsetting by row here needs no second
+    # align_genes call.
+    col = par["reference_condition_column"]
+    val = par["reference_condition_value"]
+    if col in solution.obs.columns:
+        ref_mask = (solution.obs[col] == val).to_numpy()
+        n_ref = int(ref_mask.sum())
+        if n_ref >= int(par["min_cells"]):
+            deg_refs = (solution[ref_mask].copy(), prediction[ref_mask].copy())
+            print(
+                f"Derived DEG reference condition from {col}=={val!r}: "
+                f"{n_ref} cells",
+                flush=True,
+            )
+        else:
+            print(
+                f"Reference condition {col}=={val!r} has only {n_ref} cells "
+                f"(< min_cells={par['min_cells']}); skipping DEG metrics.",
+                flush=True,
+            )
+    else:
+        print(
+            f"reference_condition_column={col!r} not found in solution.obs; "
+            "skipping DEG metrics.",
+            flush=True,
+        )
 
 print("Computing ReconEval biological metrics", flush=True)
 scores = compute_biological_metrics(
